@@ -1,6 +1,6 @@
 package com.xiaomi.infra.pegasus.spark.bulkloader.examples
 
-import com.xiaomi.infra.pegasus.spark.FDSConfig
+import com.xiaomi.infra.pegasus.spark.{FDSConfig, HDFSConfig}
 import com.xiaomi.infra.pegasus.spark.bulkloader.{
   BulkLoaderConfig,
   PegasusRecord
@@ -18,16 +18,10 @@ object CSVBulkLoader {
     val sc = new SparkContext(conf)
 
     val config = new BulkLoaderConfig(
-      new FDSConfig(
-        "accessKey",
-        "accessSecret",
-        "bucketName",
-        "endPoint"
-      ),
+      new HDFSConfig("hdfs://"),
       "clusterName",
       "tableName"
-    ).setTableId(20)
-      .setTablePartitionCount(32)
+    )
 
     // This example only shows how to convert CSV file to PegasusFile, actually any data source that
     // can be converted RDD can be also converted to PegasusFile.

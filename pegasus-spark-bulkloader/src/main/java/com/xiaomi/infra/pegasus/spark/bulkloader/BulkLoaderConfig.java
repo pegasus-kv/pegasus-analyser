@@ -3,7 +3,9 @@ package com.xiaomi.infra.pegasus.spark.bulkloader;
 import com.xiaomi.infra.pegasus.spark.CommonConfig;
 import com.xiaomi.infra.pegasus.spark.FDSConfig;
 import com.xiaomi.infra.pegasus.spark.HDFSConfig;
+import com.xiaomi.infra.pegasus.spark.PegasusSparkException;
 import com.xiaomi.infra.pegasus.spark.utils.FlowController.RateLimiterConfig;
+import com.xiaomi.infra.pegasus.spark.utils.MetaClient;
 import java.io.Serializable;
 
 /**
@@ -21,39 +23,53 @@ public class BulkLoaderConfig extends CommonConfig {
   private int tableId;
   private int tablePartitionCount;
 
-  public BulkLoaderConfig(HDFSConfig hdfsConfig, String clusterName, String tableName) {
+  public BulkLoaderConfig(HDFSConfig hdfsConfig, String clusterName, String tableName)
+      throws PegasusSparkException {
     super(hdfsConfig, clusterName, tableName);
+    initDefaultConfig();
+  }
+
+  public BulkLoaderConfig(FDSConfig fdsConfig, String clusterName, String tableName)
+      throws PegasusSparkException {
+    super(fdsConfig, clusterName, tableName);
+    initDefaultConfig();
+  }
+
+  private void initDefaultConfig() throws PegasusSparkException {
+    autoLoadTableInfo();
     setAdvancedConfig(new AdvancedConfig());
   }
 
-  public BulkLoaderConfig(FDSConfig fdsConfig, String clusterName, String tableName) {
-    super(fdsConfig, clusterName, tableName);
-    setAdvancedConfig(new AdvancedConfig());
+  // TODO(jiashuo1) support query table version
+  private void autoLoadTableInfo() throws PegasusSparkException {
+    // this means user has set it manually
+    if ((tableId != 0) || tablePartitionCount != 0) {
+      return;
+    }
+
+    MetaClient.TableInfo tableInfo;
+    try {
+      tableInfo = MetaClient.getTableInfo(getClusterName(), getTableName());
+    } catch (PegasusSparkException e) {
+      throw new PegasusSparkException(
+          String.format(
+              "%s, please use setTableInfo(int tableId, int tablePartitionCount) "
+                  + "to init table info manually",
+              e.getMessage()));
+    }
+    this.tableId = Integer.valueOf(tableInfo.general.app_id);
+    this.tablePartitionCount = Integer.valueOf(tableInfo.general.partition_count);
   }
 
   /**
-   * pegasus table ID
-   *
-   * <p>TODO(jiashuo): support automatically retrieval of the table ID of the specified table name
+   * pegasus table id and partitionCount
    *
    * @param tableId
-   * @return this
-   */
-  public BulkLoaderConfig setTableId(int tableId) {
-    this.tableId = tableId;
-    return this;
-  }
-
-  /**
-   * pegasus table partition count
-   *
-   * <p>TODO(jiashuo): support automatically retrieval of the partition count of the specified table
-   * name
-   *
    * @param tablePartitionCount
-   * @return this
+   * @return
    */
-  public BulkLoaderConfig setTablePartitionCount(int tablePartitionCount) {
+  public BulkLoaderConfig setTableInfo(int tableId, int tablePartitionCount) {
+    this.tableId = tableId;
     this.tablePartitionCount = tablePartitionCount;
     return this;
   }
