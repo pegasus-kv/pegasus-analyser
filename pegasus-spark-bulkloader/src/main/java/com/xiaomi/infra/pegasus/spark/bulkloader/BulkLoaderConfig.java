@@ -5,8 +5,11 @@ import com.xiaomi.infra.pegasus.spark.FDSConfig;
 import com.xiaomi.infra.pegasus.spark.HDFSConfig;
 import com.xiaomi.infra.pegasus.spark.PegasusSparkException;
 import com.xiaomi.infra.pegasus.spark.utils.FlowController.RateLimiterConfig;
-import com.xiaomi.infra.pegasus.spark.utils.MetaClient;
+import com.xiaomi.infra.pegasus.spark.utils.gateway.Cluster;
+import com.xiaomi.infra.pegasus.spark.utils.gateway.TableInfo;
 import java.io.Serializable;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 /**
  * The config used for generating the pegasus data which will be placed as follow":
@@ -17,48 +20,65 @@ import java.io.Serializable;
  * <DataPathRoot>/<ClusterName>/<TableName>/<PartitionIndex>/<FileIndex>.sst => RocksDB SST File
  */
 public class BulkLoaderConfig extends CommonConfig {
-  private AdvancedConfig advancedConfig;
+  private static final Log LOG = LogFactory.getLog(BulkLoaderConfig.class);
 
   private String dataPathRoot = "/pegasus-bulkloader";
+  private AdvancedConfig advancedConfig = new AdvancedConfig();
+
+  private DataVersion tableDataVersion;
   private int tableId;
   private int tablePartitionCount;
 
   public BulkLoaderConfig(HDFSConfig hdfsConfig, String clusterName, String tableName)
       throws PegasusSparkException {
     super(hdfsConfig, clusterName, tableName);
-    initDefaultConfig();
+    initTableInfo();
   }
 
   public BulkLoaderConfig(FDSConfig fdsConfig, String clusterName, String tableName)
       throws PegasusSparkException {
     super(fdsConfig, clusterName, tableName);
-    initDefaultConfig();
+    initTableInfo();
   }
 
-  private void initDefaultConfig() throws PegasusSparkException {
-    autoLoadTableInfo();
-    setAdvancedConfig(new AdvancedConfig());
-  }
+  /**
+   * auto set table info from gateway{@link Cluster}
+   *
+   * @throws PegasusSparkException
+   */
+  public void initTableInfo() throws PegasusSparkException {
+    TableInfo tableInfo;
+    DataVersion dataVersion = null;
 
-  // TODO(jiashuo1) support query table version
-  private void autoLoadTableInfo() throws PegasusSparkException {
-    // this means user has set it manually
-    if ((tableId != 0) || tablePartitionCount != 0) {
-      return;
+    tableInfo = Cluster.getTableInfo(getClusterName(), getTableName());
+    if (getDataVersion() == null) {
+      int version = Cluster.getTableVersion(tableInfo);
+      switch (version) {
+        case 0:
+          dataVersion = new DataV0();
+          break;
+        case 1:
+          dataVersion = new DataV1();
+          break;
+        default:
+          throw new PegasusSparkException(String.format("Not support data version: %d", version));
+      }
     }
 
-    MetaClient.TableInfo tableInfo;
-    try {
-      tableInfo = MetaClient.getTableInfo(getClusterName(), getTableName());
-    } catch (PegasusSparkException e) {
-      throw new PegasusSparkException(
-          String.format(
-              "%s, please use setTableInfo(int tableId, int tablePartitionCount) "
-                  + "to init table info manually",
-              e.getMessage()));
-    }
-    this.tableId = Integer.valueOf(tableInfo.general.app_id);
-    this.tablePartitionCount = Integer.valueOf(tableInfo.general.partition_count);
+    setTableInfo(
+        Integer.valueOf(tableInfo.general.app_id),
+        Integer.valueOf(tableInfo.general.partition_count),
+        dataVersion);
+
+    LOG.info(
+        "Init table info success:"
+            + String.format(
+                "cluster = %s, table = %s[%d(%d)], version = %s",
+                getClusterName(),
+                getTableName(),
+                getTableId(),
+                getTablePartitionCount(),
+                getDataVersion().toString()));
   }
 
   /**
@@ -66,11 +86,13 @@ public class BulkLoaderConfig extends CommonConfig {
    *
    * @param tableId
    * @param tablePartitionCount
+   * @param version
    * @return
    */
-  public BulkLoaderConfig setTableInfo(int tableId, int tablePartitionCount) {
+  public BulkLoaderConfig setTableInfo(int tableId, int tablePartitionCount, DataVersion version) {
     this.tableId = tableId;
     this.tablePartitionCount = tablePartitionCount;
+    this.tableDataVersion = version;
     return this;
   }
 
@@ -113,6 +135,10 @@ public class BulkLoaderConfig extends CommonConfig {
 
   public String getDataPathRoot() {
     return dataPathRoot;
+  }
+
+  public DataVersion getDataVersion() {
+    return tableDataVersion;
   }
 
   public int getTableId() {

@@ -7,8 +7,8 @@ import com.google.common.primitives.Bytes
 import org.apache.commons.lang3.Validate
 import org.apache.commons.lang3.builder.HashCodeBuilder
 
-//todo(jiashuo) PegasusRecord schema of analyser and bulkloader need refactor into common
-object PegasusRecord {
+abstract class DataVersion extends Serializable {
+
   private val EPOCH_BEGIN = 1451606400 // seconds since 2016.01.01-00:00:00 GMT
 
   private def generateKey(
@@ -35,71 +35,97 @@ object PegasusRecord {
     buf.array
   }
 
-  private def generateValueV1(
-      value: Array[Byte],
-      ttl: Int = 0
-  ): Array[Byte] = {
-    if (ttl != 0)
-      Bytes.concat(Int2Bytes(ttl + epochNow.toInt), value)
-    else Bytes.concat(Int2Bytes(ttl), value)
-  }
-
-  private def generateValueV2(
-      value: Array[Byte],
-      ttl: Int = 0,
-      ts: Long = 0,
-      clusterId: Short = 0,
-      deleteTag: Boolean = false
-  ): Array[Byte] = {
-    val externTag = Long2Bytes(
-      ts << 8 | clusterId << 1 | (if (deleteTag) 1 else 0)
-    )
-    if (ttl != 0)
-      Bytes.concat(Int2Bytes(ttl + epochNow.toInt), externTag, value)
-    else Bytes.concat(Int2Bytes(ttl), externTag, value)
-  }
-
-  private def epochNow: Long = {
+  def epochNow: Long = {
     val d = new Date
     d.getTime / 1000 - EPOCH_BEGIN
   }
 
-  private def Int2Bytes(i: Int): Array[Byte] = {
+  def Int2Bytes(i: Int): Array[Byte] = {
     val b = ByteBuffer.allocate(4)
     b.order(ByteOrder.BIG_ENDIAN)
     b.putInt(i)
     b.array
   }
 
-  private def Long2Bytes(i: Long): Array[Byte] = {
+  def Long2Bytes(i: Long): Array[Byte] = {
     val b = ByteBuffer.allocate(8)
     b.order(ByteOrder.BIG_ENDIAN)
     b.putLong(i)
     b.array
   }
 
-  def createV1(
+  def generateValue(
+      value: Array[Byte],
+      ttl: Int = 0,
+      ts: Long = 0,
+      clusterId: Short = 0,
+      deleteTag: Boolean = false
+  ): Array[Byte]
+
+  def create(
+      hashKey: Array[Byte],
+      sortKey: Array[Byte],
+      value: Array[Byte],
+      ttl: Int = 0,
+      ts: Long = 0,
+      clusterId: Short = 0,
+      deleteTag: Boolean = false
+  ): (PegasusKey, PegasusValue) = {
+    (
+      PegasusKey(generateKey(hashKey, sortKey)),
+      PegasusValue(generateValue(value, ttl, ts, clusterId, deleteTag))
+    )
+  }
+
+  def create(
       hashKey: Array[Byte],
       sortKey: Array[Byte],
       value: Array[Byte]
   ): (PegasusKey, PegasusValue) = {
     (
       PegasusKey(generateKey(hashKey, sortKey)),
-      PegasusValue(generateValueV1(value))
+      PegasusValue(generateValue(value))
     )
   }
+}
 
-  def createV2(
-      hashKey: Array[Byte],
-      sortKey: Array[Byte],
-      value: Array[Byte]
-  ): (PegasusKey, PegasusValue) = {
-    (
-      PegasusKey(generateKey(hashKey, sortKey)),
-      PegasusValue(generateValueV2(value))
-    )
+class DataV0 extends DataVersion {
+
+  def generateValue(
+      value: Array[Byte],
+      ttl: Int = 0,
+      ts: Long = 0,
+      clusterId: Short = 0,
+      deleteTag: Boolean = false
+  ): Array[Byte] = {
+    if (ttl != 0)
+      Bytes.concat(Int2Bytes(ttl + epochNow.toInt), value)
+    else Bytes.concat(Int2Bytes(ttl), value)
   }
 
+  override def toString: String = "0"
+
+}
+
+class DataV1 extends DataVersion {
+
+  def generateValue(
+      value: Array[Byte],
+      ttl: Int = 0,
+      ts: Long = 0,
+      clusterId: Short = 0,
+      deleteTag: Boolean = false
+  ): Array[Byte] = {
+
+    val externalTag = Long2Bytes(
+      ts << 8 | clusterId << 1 | (if (deleteTag) 1 else 0)
+    )
+    if (ttl != 0)
+      Bytes.concat(Int2Bytes(ttl + epochNow.toInt), externalTag, value)
+    else Bytes.concat(Int2Bytes(ttl), externalTag, value)
+  }
+
+  override def toString: String = "1"
 }
 
 class PegasusBytes(record: Array[Byte]) extends Serializable {

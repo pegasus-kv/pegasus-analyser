@@ -1,10 +1,8 @@
 package com.xiaomi.infra.pegasus.spark.bulkloader.examples
 
-import com.xiaomi.infra.pegasus.spark.{FDSConfig, HDFSConfig}
-import com.xiaomi.infra.pegasus.spark.bulkloader.{
-  BulkLoaderConfig,
-  PegasusRecord
-}
+import com.xiaomi.infra.pegasus.spark.HDFSConfig
+import com.xiaomi.infra.pegasus.spark.bulkloader.DataV0
+import com.xiaomi.infra.pegasus.spark.bulkloader.BulkLoaderConfig
 import org.apache.spark.{SparkConf, SparkContext}
 import com.xiaomi.infra.pegasus.spark.bulkloader.CustomImplicits._
 
@@ -30,7 +28,7 @@ object CSVBulkLoader {
     sc.textFile("data.csv")
       .map(i => {
         val lines = i.split(",")
-        PegasusRecord.createV1(
+        config.getDataVersion.create(
           lines(0).getBytes(),
           lines(1).getBytes(),
           lines(2).getBytes()

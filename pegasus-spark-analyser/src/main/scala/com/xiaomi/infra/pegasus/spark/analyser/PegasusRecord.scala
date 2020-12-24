@@ -28,7 +28,7 @@ abstract class DataVersion extends Serializable {
 
   def restoreValue(value: Array[Byte]): Array[Byte]
 
-  def getPegasusRecord(rocksIterator: RocksIterator): PegasusRecord = {
+  def restore(rocksIterator: RocksIterator): PegasusRecord = {
     val keyPair = restoreKey(rocksIterator.key)
     PegasusRecord(
       keyPair.getLeft,
@@ -39,17 +39,21 @@ abstract class DataVersion extends Serializable {
   }
 }
 
-class DataVersion1 extends DataVersion {
+class DataV0 extends DataVersion {
 
   def restoreValue(value: Array[Byte]): Array[Byte] =
     util.Arrays.copyOfRange(value, 4, value.length)
 
+  override def toString: String = "0"
+
 }
 
-class DataVersion2 extends DataVersion {
+class DataV1 extends DataVersion {
 
   def restoreValue(value: Array[Byte]): Array[Byte] =
     util.Arrays.copyOfRange(value, 12, value.length)
+
+  override def toString: String = "1"
 
 }
 

@@ -1,48 +1,30 @@
-package com.xiaomi.infra.pegasus.spark.utils;
+package com.xiaomi.infra.pegasus.spark.utils.gateway;
 
 import com.xiaomi.infra.pegasus.spark.PegasusSparkException;
-import com.xiaomi.infra.pegasus.spark.utils.MetaClient.TableInfo.GeneralInfo;
 import java.io.IOException;
 import java.net.SocketException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.http.HttpResponse;
 import org.apache.http.HttpStatus;
 import org.apache.http.NameValuePair;
 import org.apache.http.ParseException;
-import org.apache.http.client.HttpClient;
 import org.apache.http.client.ServiceUnavailableRetryStrategy;
+import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.protocol.HttpContext;
-import org.apache.http.util.EntityUtils;
 
-public class MetaClient {
-  // http table info resp format
-  public static class TableInfo {
-    public class GeneralInfo {
-      public String app_name;
-      public String app_id;
-      public String partition_count;
-      public String max_replica_count;
-    }
+public class HttpClient {
 
-    public GeneralInfo general;
-
-    public TableInfo(GeneralInfo general) {
-      this.general = general;
-    }
-  }
-
-  private static String metaGateWay = "http://pegasus-gateway.hadoop.srv/";
-  private static HttpClient httpClient;
+  private static final org.apache.http.client.HttpClient httpClient;
+  private static final RequestConfig config;
 
   static {
     httpClient =
@@ -66,35 +48,19 @@ public class MetaClient {
                   }
                 })
             .build();
+
+    config =
+        RequestConfig.custom()
+            .setConnectTimeout(1000)
+            .setConnectionRequestTimeout(1000)
+            .setSocketTimeout(1000)
+            .build();
   }
 
-  public static TableInfo getTableInfo(String cluster, String table) throws PegasusSparkException {
-    String path = String.format("/%s/meta/app", cluster);
-    Map<String, String> params = new HashMap<>();
-    params.put("name", table);
-
-    HttpResponse httpResponse = get(path, params);
-    int code = httpResponse.getStatusLine().getStatusCode();
-    if (code != 200) {
-      throw new PegasusSparkException(
-          String.format(
-              "get tableInfo[%s(%s)] from gateway failed, ErrCode = %d", cluster, table, code));
-    }
-
-    TableInfo tableInfo;
-    try {
-      String resp = EntityUtils.toString(httpResponse.getEntity(), "UTF-8");
-      tableInfo = JsonParser.getGson().fromJson(resp, TableInfo.class);
-    } catch (IOException e) {
-      throw new PegasusSparkException(
-          String.format("format the response to tableInfo failed: %s", e.getMessage()));
-    }
-    return tableInfo;
-  }
-
-  private static HttpResponse get(String path, Map<String, String> params)
+  public static HttpResponse get(String path, Map<String, String> params)
       throws PegasusSparkException {
-    HttpGet request = new HttpGet(metaGateWay + path);
+    HttpGet request = new HttpGet(path);
+    request.setConfig(config);
     List<NameValuePair> uriParams = parseParams(params);
     try {
       URI uri = new URIBuilder(request.getURI()).addParameters(uriParams).build();
@@ -112,7 +78,7 @@ public class MetaClient {
   }
 
   private static List<NameValuePair> parseParams(Map<String, String> params) {
-    List<NameValuePair> uriParams = new ArrayList<NameValuePair>();
+    List<NameValuePair> uriParams = new ArrayList<>();
     if (params != null) {
       for (Map.Entry<String, String> entry : params.entrySet()) {
         NameValuePair nvp = new BasicNameValuePair(entry.getKey(), entry.getValue());
@@ -124,7 +90,7 @@ public class MetaClient {
 
   // TODO(jiashuo1)
   public HttpResponse post(String path, Map<String, String> params, String body) {
-    HttpPost request = new HttpPost(metaGateWay + path);
+    HttpPost request = new HttpPost(path);
     return null;
   }
 }
