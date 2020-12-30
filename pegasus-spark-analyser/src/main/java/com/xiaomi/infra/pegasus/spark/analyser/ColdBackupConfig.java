@@ -3,7 +3,11 @@ package com.xiaomi.infra.pegasus.spark.analyser;
 import com.xiaomi.infra.pegasus.spark.CommonConfig;
 import com.xiaomi.infra.pegasus.spark.FDSConfig;
 import com.xiaomi.infra.pegasus.spark.HDFSConfig;
+import com.xiaomi.infra.pegasus.spark.PegasusSparkException;
 import com.xiaomi.infra.pegasus.spark.utils.FlowController.RateLimiterConfig;
+import com.xiaomi.infra.pegasus.spark.utils.gateway.Cluster;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 /**
  * ColdBackupConfig is used when you manipulate the cold-backup data. <br>
@@ -12,6 +16,7 @@ import com.xiaomi.infra.pegasus.spark.utils.FlowController.RateLimiterConfig;
  * It's a complete snapshot of the moment.
  */
 public class ColdBackupConfig extends CommonConfig implements Config {
+  private static final Log LOG = LogFactory.getLog(ColdBackupConfig.class);
   private static final DataType dataType = DataType.COLD_BACKUP;
 
   private static final long MB_UNIT = 1024 * 1024L;
@@ -25,18 +30,48 @@ public class ColdBackupConfig extends CommonConfig implements Config {
   private String coldBackupTime;
   private DataVersion dataVersion;
 
-  public ColdBackupConfig(HDFSConfig hdfsConfig, String clusterName, String tableName) {
+  public ColdBackupConfig(HDFSConfig hdfsConfig, String clusterName, String tableName)
+      throws PegasusSparkException {
     super(hdfsConfig, clusterName, tableName);
-    setReadOptions(DEFAULT_FILE_OPEN_COUNT, DEFAULT_READ_AHEAD_SIZE_MB);
-    setPolicyName(tableName);
-    setDataVersion(new DataVersion1());
+    initConfig();
   }
 
-  public ColdBackupConfig(FDSConfig fdsConfig, String clusterName, String tableName) {
+  public ColdBackupConfig(FDSConfig fdsConfig, String clusterName, String tableName)
+      throws PegasusSparkException {
     super(fdsConfig, clusterName, tableName);
+    initConfig();
+  }
+
+  private void initConfig() throws PegasusSparkException {
     setReadOptions(DEFAULT_FILE_OPEN_COUNT, DEFAULT_READ_AHEAD_SIZE_MB);
-    setPolicyName(tableName);
-    setDataVersion(new DataVersion1());
+    setPolicyName(getTableName());
+    initDataVersion();
+  }
+
+  /**
+   * auto set data version from gateway{@link Cluster}
+   *
+   * @throws PegasusSparkException
+   */
+  public void initDataVersion() throws PegasusSparkException {
+    int version = Cluster.getTableVersion(getClusterName(), getTableName());
+    switch (version) {
+      case 0:
+        setDataVersion(new DataV0());
+        break;
+      case 1:
+        setDataVersion(new DataV1());
+        break;
+      default:
+        throw new PegasusSparkException(
+            String.format("Not support read data version: %d", version));
+    }
+
+    LOG.info(
+        "Init table version success:"
+            + String.format(
+                "cluster = %s, table = %s, version = %s",
+                getClusterName(), getTableName(), getDataVersion().toString()));
   }
 
   @Override
@@ -72,11 +107,9 @@ public class ColdBackupConfig extends CommonConfig implements Config {
   /**
    * pegasus data version
    *
-   * @param dataVersion pegasus data has different data versions, default is {@linkplain
-   *     DataVersion1}
+   * @param dataVersion pegasus data has different data versions, default is {@linkplain DataV0}
    * @return this
    */
-  // TODO(wutao1): we can support auto detection of the data version.
   public ColdBackupConfig setDataVersion(DataVersion dataVersion) {
     this.dataVersion = dataVersion;
     return this;

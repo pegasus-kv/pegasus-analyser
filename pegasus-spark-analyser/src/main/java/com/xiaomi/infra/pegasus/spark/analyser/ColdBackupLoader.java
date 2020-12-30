@@ -18,7 +18,6 @@ import org.rocksdb.RocksDBException;
 import org.rocksdb.RocksIterator;
 
 class ColdBackupLoader implements PegasusLoader {
-
   private static final Log LOG = LogFactory.getLog(ColdBackupLoader.class);
 
   private ColdBackupConfig coldBackupConfig;
@@ -31,7 +30,6 @@ class ColdBackupLoader implements PegasusLoader {
   ColdBackupLoader(ColdBackupConfig config) throws PegasusSparkException {
     coldBackupConfig = config;
     remoteFileSystem = config.getRemoteFileSystem();
-
     String idPrefix =
         coldBackupConfig.getRemoteFileSystemURL()
             + "/"
@@ -214,7 +212,7 @@ class ColdBackupLoader implements PegasusLoader {
 
     @Override
     public PegasusRecord restore() {
-      return scannerVersion.getPegasusRecord(rocksIterator);
+      return scannerVersion.restore(rocksIterator);
     }
 
     @Override

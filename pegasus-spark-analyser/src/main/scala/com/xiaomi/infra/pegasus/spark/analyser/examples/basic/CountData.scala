@@ -1,7 +1,7 @@
 package com.xiaomi.infra.pegasus.spark.analyser.examples.basic
 
 import com.xiaomi.infra.pegasus.spark.FDSConfig
-import com.xiaomi.infra.pegasus.spark.analyser.ColdBackupConfig
+import com.xiaomi.infra.pegasus.spark.analyser.{ColdBackupConfig, DataV0}
 import org.apache.spark.{SparkConf, SparkContext}
 import com.xiaomi.infra.pegasus.spark.analyser.CustomImplicits._
 
