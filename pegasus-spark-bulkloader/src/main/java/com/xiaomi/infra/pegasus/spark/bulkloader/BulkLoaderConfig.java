@@ -29,16 +29,12 @@ public class BulkLoaderConfig extends CommonConfig {
   private int tableId;
   private int tablePartitionCount;
 
-  public BulkLoaderConfig(HDFSConfig hdfsConfig, String clusterName, String tableName)
-      throws PegasusSparkException {
+  public BulkLoaderConfig(HDFSConfig hdfsConfig, String clusterName, String tableName) {
     super(hdfsConfig, clusterName, tableName);
-    initTableInfo();
   }
 
-  public BulkLoaderConfig(FDSConfig fdsConfig, String clusterName, String tableName)
-      throws PegasusSparkException {
+  public BulkLoaderConfig(FDSConfig fdsConfig, String clusterName, String tableName) {
     super(fdsConfig, clusterName, tableName);
-    initTableInfo();
   }
 
   /**
@@ -46,7 +42,7 @@ public class BulkLoaderConfig extends CommonConfig {
    *
    * @throws PegasusSparkException
    */
-  public void initTableInfo() throws PegasusSparkException {
+  public BulkLoaderConfig initTableInfo() throws PegasusSparkException {
     TableInfo tableInfo;
     DataVersion dataVersion = null;
 
@@ -79,6 +75,7 @@ public class BulkLoaderConfig extends CommonConfig {
                 getTableId(),
                 getTablePartitionCount(),
                 getDataVersion().toString()));
+    return this;
   }
 
   /**
