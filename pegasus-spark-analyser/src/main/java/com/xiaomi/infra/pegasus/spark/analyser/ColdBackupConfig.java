@@ -30,22 +30,19 @@ public class ColdBackupConfig extends CommonConfig implements Config {
   private String coldBackupTime;
   private DataVersion dataVersion;
 
-  public ColdBackupConfig(HDFSConfig hdfsConfig, String clusterName, String tableName)
-      throws PegasusSparkException {
+  public ColdBackupConfig(HDFSConfig hdfsConfig, String clusterName, String tableName) {
     super(hdfsConfig, clusterName, tableName);
     initConfig();
   }
 
-  public ColdBackupConfig(FDSConfig fdsConfig, String clusterName, String tableName)
-      throws PegasusSparkException {
+  public ColdBackupConfig(FDSConfig fdsConfig, String clusterName, String tableName) {
     super(fdsConfig, clusterName, tableName);
     initConfig();
   }
 
-  private void initConfig() throws PegasusSparkException {
+  private void initConfig() {
     setReadOptions(DEFAULT_FILE_OPEN_COUNT, DEFAULT_READ_AHEAD_SIZE_MB);
     setPolicyName(getTableName());
-    initDataVersion();
   }
 
   /**
@@ -53,7 +50,7 @@ public class ColdBackupConfig extends CommonConfig implements Config {
    *
    * @throws PegasusSparkException
    */
-  public void initDataVersion() throws PegasusSparkException {
+  public ColdBackupConfig initDataVersion() throws PegasusSparkException {
     int version = Cluster.getTableVersion(getClusterName(), getTableName());
     switch (version) {
       case 0:
@@ -72,6 +69,7 @@ public class ColdBackupConfig extends CommonConfig implements Config {
             + String.format(
                 "cluster = %s, table = %s, version = %s",
                 getClusterName(), getTableName(), getDataVersion().toString()));
+    return this;
   }
 
   @Override

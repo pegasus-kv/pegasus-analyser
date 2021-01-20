@@ -19,7 +19,10 @@ object CSVBulkLoader {
       new HDFSConfig("hdfs://"),
       "clusterName",
       "tableName"
-    )
+      // `initTableInfo` means auto set data version
+      // from pegasus-gateway(https://git.n.xiaomi.com/pegasus/pegasus-gateway),
+      // if your cluster not support gateway, you need use setTableInfo(), default is dataV1
+    ).initTableInfo() // or setTableInfo(args)
 
     // This example only shows how to convert CSV file to PegasusFile, actually any data source that
     // can be converted RDD can be also converted to PegasusFile.

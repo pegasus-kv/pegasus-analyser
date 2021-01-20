@@ -22,7 +22,10 @@ object CountData {
         ),
         "clusterName",
         "tableName"
-      )
+        // `initDataVersion` means auto set data version
+        // from pegasus-gateway(https://git.n.xiaomi.com/pegasus/pegasus-gateway),
+        // if your cluster not support gateway, you need use setDataVersion(), default is dataV1
+      ).initDataVersion() // or setDataVersion(args)
 
     var count = 0
     val sc = new SparkContext(conf)

@@ -19,6 +19,10 @@ object ConvertParquet {
     // if data in HDFS, pass HDFSConfig()
     val coldBackupConfig =
       new ColdBackupConfig(new FDSConfig("", "", "", "", ""), "onebox", "temp")
+      // `initDataVersion` means auto set data version
+      // from pegasus-gateway(https://git.n.xiaomi.com/pegasus/pegasus-gateway),
+      // if your cluster not support gateway, you need use setDataVersion(), default is dataV1
+        .initDataVersion()
 
     val rdd = spark.sparkContext.pegasusSnapshotRDD(coldBackupConfig)
 
