@@ -10,9 +10,9 @@ class PegasusSetItemRDD(resource: RDD[SetItem]) extends Serializable {
   private val logger = LoggerFactory.getLogger(classOf[PegasusSetItemRDD])
 
   def loadIntoPeagsus(config: OnlineLoaderConfig): Unit = {
-
+    val partitionCount = resource.getNumPartitions
     resource.foreachPartition(i => {
-      val onlineLoader = new OnlineLoader(config, resource.getNumPartitions)
+      val onlineLoader = new OnlineLoader(config, partitionCount)
       val partitionId = TaskContext.getPartitionId
 
       // filter the expired record
@@ -24,7 +24,7 @@ class PegasusSetItemRDD(resource: RDD[SetItem]) extends Serializable {
             "partition(" + partitionId + ") totalCount = " + totalCount
           )
         }
-        p.ttlSeconds >= config.getTTLThreshold
+        p.ttlSeconds > config.getTTLThreshold
       })
 
       // batch set the data into pegasus

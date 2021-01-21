@@ -19,7 +19,7 @@ public class OnlineLoaderConfig implements Serializable {
     this.rateLimiterConfig = new RateLimiterConfig();
     this.clusterName = clusterName;
     this.tableName = tableName;
-    this.TTLThreshold = 0;
+    this.TTLThreshold = -1;
     this.batchCount = 10;
   }
 
