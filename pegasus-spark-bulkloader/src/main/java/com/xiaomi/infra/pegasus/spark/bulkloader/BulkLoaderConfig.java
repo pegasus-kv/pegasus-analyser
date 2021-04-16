@@ -29,12 +29,18 @@ public class BulkLoaderConfig extends CommonConfig {
   private int tableId;
   private int tablePartitionCount;
 
-  public BulkLoaderConfig(HDFSConfig hdfsConfig, String clusterName, String tableName) {
+  public BulkLoaderConfig(HDFSConfig hdfsConfig, String clusterName, String tableName)
+      throws PegasusSparkException {
     super(hdfsConfig, clusterName, tableName);
+    initTableInfo(); // table id, partitionCount, version are fetched via gateway by default.
+    // Pegasus Server Version required 2.2.0
   }
 
-  public BulkLoaderConfig(FDSConfig fdsConfig, String clusterName, String tableName) {
+  public BulkLoaderConfig(FDSConfig fdsConfig, String clusterName, String tableName)
+      throws PegasusSparkException {
     super(fdsConfig, clusterName, tableName);
+    initTableInfo(); // table id, partitionCount, version are fetched via gateway by default.
+    // Pegasus Server Version required 2.2.0
   }
 
   /**
@@ -44,10 +50,10 @@ public class BulkLoaderConfig extends CommonConfig {
    */
   public BulkLoaderConfig initTableInfo() throws PegasusSparkException {
     TableInfo tableInfo;
-    DataVersion dataVersion = null;
+    DataVersion dataVersion = getDataVersion();
 
     tableInfo = Cluster.getTableInfo(getClusterName(), getTableName());
-    if (getDataVersion() == null) {
+    if (dataVersion == null) {
       int version = Cluster.getTableVersion(tableInfo);
       switch (version) {
         case 0:
@@ -62,8 +68,8 @@ public class BulkLoaderConfig extends CommonConfig {
     }
 
     setTableInfo(
-        Integer.valueOf(tableInfo.general.app_id),
-        Integer.valueOf(tableInfo.general.partition_count),
+        Integer.parseInt(tableInfo.general.app_id),
+        Integer.parseInt(tableInfo.general.partition_count),
         dataVersion);
 
     LOG.info(

@@ -24,11 +24,33 @@ public class ColdBackupConfig extends CommonConfig implements Config {
   private static final int DEFAULT_FILE_OPEN_COUNT = 50;
   private static final long DEFAULT_READ_AHEAD_SIZE_MB = 1;
 
+  private String backupID;
+  private String rootPath = "/";
+  private String policyName = "";
   private long readAheadSize;
   private int fileOpenCount;
-  private String policyName;
   private String coldBackupTime;
   private DataVersion dataVersion;
+
+  public ColdBackupConfig(
+      HDFSConfig hdfsConfig,
+      String rootPath,
+      String backupID,
+      String clusterName,
+      String tableName) {
+    super(hdfsConfig, clusterName, tableName);
+    this.rootPath = rootPath;
+    this.backupID = backupID;
+    initConfig();
+  }
+
+  public ColdBackupConfig(
+      FDSConfig fdsConfig, String rootPath, String backupID, String clusterName, String tableName) {
+    super(fdsConfig, clusterName, tableName);
+    this.rootPath = rootPath;
+    this.backupID = backupID;
+    initConfig();
+  }
 
   public ColdBackupConfig(HDFSConfig hdfsConfig, String clusterName, String tableName) {
     super(hdfsConfig, clusterName, tableName);
@@ -42,7 +64,6 @@ public class ColdBackupConfig extends CommonConfig implements Config {
 
   private void initConfig() {
     setReadOptions(DEFAULT_FILE_OPEN_COUNT, DEFAULT_READ_AHEAD_SIZE_MB);
-    setPolicyName(getTableName());
   }
 
   /**
@@ -138,6 +159,14 @@ public class ColdBackupConfig extends CommonConfig implements Config {
   public ColdBackupConfig setRateLimiterConfig(RateLimiterConfig rateLimiterConfig) {
     super.setRateLimiterConfig(rateLimiterConfig);
     return this;
+  }
+
+  public String getRootPath() {
+    return rootPath;
+  }
+
+  public String getBackupID() {
+    return backupID;
   }
 
   public long getReadAheadSize() {

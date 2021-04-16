@@ -31,17 +31,23 @@ class ColdBackupLoader implements PegasusLoader {
     coldBackupConfig = config;
     remoteFileSystem = config.getRemoteFileSystem();
     String idPrefix =
-        coldBackupConfig.getRemoteFileSystemURL()
-            + "/"
-            + coldBackupConfig.getClusterName()
-            + "/"
-            + coldBackupConfig.getPolicyName()
-            + "/";
+        String.format(
+            "%s%s/%s/%s/",
+            coldBackupConfig.getRemoteFileSystemURL(),
+            coldBackupConfig.getRootPath(),
+            coldBackupConfig.getClusterName(),
+            coldBackupConfig.getPolicyName());
 
-    String idPath =
-        config.getColdBackupTime() == null
-            ? getLatestPolicyId(idPrefix)
-            : getPolicyId(idPrefix, config.getColdBackupTime());
+    String idPath;
+    if (config.getBackupID() != null) {
+      idPath = idPrefix + config.getBackupID() + "/";
+    } else {
+      idPath =
+          config.getColdBackupTime() == null
+              ? getLatestPolicyId(idPrefix)
+              : getPolicyId(idPrefix, config.getColdBackupTime());
+    }
+
     String tableNameAndId = getTableNameAndId(idPath, coldBackupConfig.getTableName());
     String metaPrefix = idPath + "/" + tableNameAndId;
 
