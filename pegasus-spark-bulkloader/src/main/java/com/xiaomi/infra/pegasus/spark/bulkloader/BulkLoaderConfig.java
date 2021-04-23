@@ -89,8 +89,8 @@ public class BulkLoaderConfig extends CommonConfig {
   }
 
   /**
-   * Set advanced configuration for bulk load job. See {@link AdvancedConfig} for
-   * more details. (Optional)
+   * Set advanced configuration for bulk load job. See {@link AdvancedConfig} for more details.
+   * (Optional)
    *
    * @param advancedConfig
    * @return this
@@ -135,8 +135,8 @@ public class BulkLoaderConfig extends CommonConfig {
   }
 
   /**
-   * Advanced configuration for Pegasus BulkLoad. Leave it to default if you are
-   * uncertain for the meaning of each item.
+   * Advanced configuration for Pegasus BulkLoad. Leave it to default if you are uncertain for the
+   * meaning of each item.
    */
   public static class AdvancedConfig implements Serializable {
 
@@ -144,12 +144,11 @@ public class BulkLoaderConfig extends CommonConfig {
     private boolean isSort = true;
 
     /**
-     * Whether to remove duplicate pegasus records. Pegasus BulkLoad requires the
-     * data set contains only distinct (different) records.
+     * Whether to remove duplicate pegasus records. Pegasus BulkLoad requires the data set contains
+     * only distinct (different) records.
      *
-     * If the RDD given is already distinct (for example, when the RDD is loaded
-     * from a Pegasus backup), you can set this option to false to complete the job
-     * faster.
+     * <p>If the RDD given is already distinct (for example, when the RDD is loaded from a Pegasus
+     * backup), you can set this option to false to complete the job faster.
      *
      * @param distinct default is true
      * @return this
@@ -160,12 +159,11 @@ public class BulkLoaderConfig extends CommonConfig {
     }
 
     /**
-     * Whether to sort the pegasus records. Pegasus BulkLoad requires the data set
-     * to be fully sorted.
+     * Whether to sort the pegasus records. Pegasus BulkLoad requires the data set to be fully
+     * sorted.
      *
-     * If the RDD given is already sorted (for example, when the RDD is loaded from
-     * a Pegasus backup), you can set this option to false to complete the job
-     * faster.
+     * <p>If the RDD given is already sorted (for example, when the RDD is loaded from a Pegasus
+     * backup), you can set this option to false to complete the job faster.
      *
      * @param sort default is true
      * @return this
