@@ -7,7 +7,7 @@ import org.apache.spark.Partitioner
   * The custom hash rule for pegasus
   * @param num hash partition, equal with the pegasus table partition count
   */
-class PegasusHashPartitioner(val num: Int) extends Partitioner {
+private class PegasusHashPartitioner(val num: Int) extends Partitioner {
   override def numPartitions: Int = num
 
   override def getPartition(key: Any): Int = {

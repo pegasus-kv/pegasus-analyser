@@ -9,9 +9,16 @@ import org.apache.spark.rdd.RDD
 
 import scala.collection.JavaConverters._
 
+/**
+ * PegasusRecordRDD is a data set that can be persisted into Pegasus via BulkLoad.
+ */
 class PegasusRecordRDD(data: RDD[(PegasusKey, PegasusValue)]) {
   private val LOG = LogFactory.getLog(classOf[PegasusRecordRDD])
 
+  /**
+    * Transform this data set into Pegasus files, which can be directly
+    * ingested into Pegasus's storage engine.
+    */
   def saveAsPegasusFile(config: BulkLoaderConfig): Unit = {
     checkTablePathExist(config)
 
