@@ -32,6 +32,7 @@ public class ColdBackupConfig extends CommonConfig implements Config {
   private String coldBackupTime;
   private DataVersion dataVersion;
 
+  // support Pegasus Server version 2.2.0
   public ColdBackupConfig(
       HDFSConfig hdfsConfig,
       String rootPath,
@@ -44,6 +45,7 @@ public class ColdBackupConfig extends CommonConfig implements Config {
     initConfig();
   }
 
+  // support Pegasus Server version 2.2.0
   public ColdBackupConfig(
       FDSConfig fdsConfig, String rootPath, String backupID, String clusterName, String tableName) {
     super(fdsConfig, clusterName, tableName);
@@ -52,11 +54,13 @@ public class ColdBackupConfig extends CommonConfig implements Config {
     initConfig();
   }
 
+  // only support Pegasus Server version < 2.2.0
   public ColdBackupConfig(HDFSConfig hdfsConfig, String clusterName, String tableName) {
     super(hdfsConfig, clusterName, tableName);
     initConfig();
   }
 
+  // only support Pegasus Server version < 2.2.0
   public ColdBackupConfig(FDSConfig fdsConfig, String clusterName, String tableName) {
     super(fdsConfig, clusterName, tableName);
     initConfig();
@@ -73,18 +77,7 @@ public class ColdBackupConfig extends CommonConfig implements Config {
    */
   public ColdBackupConfig initDataVersion() throws PegasusSparkException {
     int version = Cluster.getTableVersion(getClusterName(), getTableName());
-    switch (version) {
-      case 0:
-        setDataVersion(new DataV0());
-        break;
-      case 1:
-        setDataVersion(new DataV1());
-        break;
-      default:
-        throw new PegasusSparkException(
-            String.format("Not support read data version: %d", version));
-    }
-
+    setDataVersion(version);
     LOG.info(
         "Init table version success:"
             + String.format(
@@ -99,11 +92,11 @@ public class ColdBackupConfig extends CommonConfig implements Config {
   }
 
   /**
-   * cold backup policy name
+   * cold backup policy name is pegasus server(version < 2.2.0) cold backup concept which is set
+   * when creating cold backup, see https://pegasus.apache.org/administration/cold-backup. if
+   * pegasus server >=2.2.0, this param is set to "" and can be ignored
    *
-   * @param policyName policyName is pegasus server cold backup concept which is set when creating
-   *     cold backup, see https://pegasus.apache.org/administration/cold-backup, here default is
-   *     "every_day", you may need change it base your pegasus server config
+   * @param policyName
    * @return this
    */
   public ColdBackupConfig setPolicyName(String policyName) {
@@ -112,10 +105,11 @@ public class ColdBackupConfig extends CommonConfig implements Config {
   }
 
   /**
-   * cold backup creating time.
+   * cold backup creating time. Pegasus Server Version < 2.2.0 required, if >= 2.2.0, please use
+   * {@linkplain ColdBackupConfig#backupID} in constructor
    *
-   * @param coldBackupTime creating time of cold backup data, accurate to day level. for example:
-   *     2019-09-11, default is null, means choose the latest data
+   * @param coldBackupTime please </>creating time of cold backup data, accurate to day level. for
+   *     example: 2019-09-11, default is null, means choose the latest data
    * @return this
    */
   public ColdBackupConfig setColdBackupTime(String coldBackupTime) {
@@ -124,13 +118,24 @@ public class ColdBackupConfig extends CommonConfig implements Config {
   }
 
   /**
-   * pegasus data version
+   * pegasus table data version, 0 or 1, if Pegasus Server >= 2.2.0, you can auto-init use
+   * {@linkplain ColdBackupConfig#initDataVersion()}
    *
-   * @param dataVersion pegasus data has different data versions, default is {@linkplain DataV0}
+   * @param dataVersion
    * @return this
    */
-  public ColdBackupConfig setDataVersion(DataVersion dataVersion) {
-    this.dataVersion = dataVersion;
+  public ColdBackupConfig setDataVersion(int dataVersion) throws PegasusSparkException {
+    switch (dataVersion) {
+      case 0:
+        this.dataVersion = new DataV0();
+        break;
+      case 1:
+        this.dataVersion = new DataV1();
+        break;
+      default:
+        throw new PegasusSparkException(
+            String.format("Not support read data version: %d", dataVersion));
+    }
     return this;
   }
 
