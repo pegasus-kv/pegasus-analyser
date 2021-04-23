@@ -40,3 +40,8 @@ dependency-reduced-pom.xml
 .settings/
 scalafmt
 rolling_log
+
+#vscode
+.vscode
+.metals
+.bloop
