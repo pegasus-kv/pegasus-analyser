@@ -154,9 +154,7 @@ class BulkLoader {
     FileStatus[] fileStatuses = remoteFileSystem.getFileStatus(partitionPath);
 
     for (FileStatus fileStatus : fileStatuses) {
-      if (!generateFileMetaInfo(fileStatus)) {
-        return false;
-      }
+      generateFileMetaInfo(fileStatus);
     }
 
     dataMetaInfo.file_total_size = totalSize.get();
@@ -167,7 +165,7 @@ class BulkLoader {
     return true;
   }
 
-  private boolean generateFileMetaInfo(FileStatus fileStatus) throws PegasusSparkException {
+  private void generateFileMetaInfo(FileStatus fileStatus) throws PegasusSparkException {
     String filePath = fileStatus.getPath().toString();
 
     String fileName = fileStatus.getPath().getName();
@@ -175,8 +173,9 @@ class BulkLoader {
     String fileMD5 = remoteFileSystem.getFileMD5(filePath);
 
     if (fileSize <= 0) {
-      LOG.error(fileName + " get size failed, size=" + fileSize);
-      return false;
+      dataMetaInfo.files.clear();
+      totalSize.set(0);
+      throw new PegasusSparkException(fileName + " get size failed, size=" + fileSize);
     }
 
     FileInfo fileInfo = dataMetaInfo.new FileInfo(fileName, fileSize, fileMD5);
@@ -185,6 +184,5 @@ class BulkLoader {
     totalSize.addAndGet(fileSize);
 
     LOG.debug(fileName + " meta info generates complete!");
-    return true;
   }
 }
