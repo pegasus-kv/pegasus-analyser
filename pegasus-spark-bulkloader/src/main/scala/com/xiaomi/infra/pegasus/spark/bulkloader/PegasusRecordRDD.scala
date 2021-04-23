@@ -1,5 +1,6 @@
 package com.xiaomi.infra.pegasus.spark.bulkloader
 
+import com.xiaomi.infra.pegasus.spark.PegasusSparkException
 import com.xiaomi.infra.pegasus.spark.bulkloader.CustomImplicits._
 import com.xiaomi.infra.pegasus.spark.utils.JNILibraryLoader
 import org.apache.commons.logging.LogFactory
@@ -12,7 +13,7 @@ class PegasusRecordRDD(data: RDD[(PegasusKey, PegasusValue)]) {
   private val LOG = LogFactory.getLog(classOf[PegasusRecordRDD])
 
   def saveAsPegasusFile(config: BulkLoaderConfig): Unit = {
-    checkExistAndDelete(config)
+    checkTablePathExist(config)
 
     var rdd = data
     if (config.getAdvancedConfig.enableDistinct) {
@@ -35,18 +36,16 @@ class PegasusRecordRDD(data: RDD[(PegasusKey, PegasusValue)]) {
     })
   }
 
-  // if has older bulkloader data, need delete it
-  // TODO(jiashuo) the logic may need be deleted
-  private def checkExistAndDelete(config: BulkLoaderConfig): Unit = {
+  // not allow generate data in same path which usually has origin data
+  private def checkTablePathExist(config: BulkLoaderConfig): Unit = {
     val tablePath = config.getRemoteFileSystemURL + "/" +
       config.getDataPathRoot + "/" + config.getClusterName + "/" + config.getTableName
     val remoteFileSystem = config.getRemoteFileSystem
 
     if (remoteFileSystem.exist(tablePath)) {
-      LOG.warn(
-        "the data " + tablePath + " has been existed, and will be deleted!"
+      throw new PegasusSparkException(
+        "the data [" + tablePath + "] has been existed, please make sure put different path!"
       )
-      remoteFileSystem.delete(tablePath, true)
     }
   }
 

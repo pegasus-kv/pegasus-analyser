@@ -39,3 +39,4 @@ dependency-reduced-pom.xml
 .project
 .settings/
 scalafmt
+rolling_log
