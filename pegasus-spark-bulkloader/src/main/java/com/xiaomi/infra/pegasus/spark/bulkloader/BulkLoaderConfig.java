@@ -33,14 +33,14 @@ public class BulkLoaderConfig extends CommonConfig {
       throws PegasusSparkException {
     super(hdfsConfig, clusterName, tableName);
     initTableInfo(); // table id, partitionCount, version are fetched via gateway by default.
-    // Pegasus Server Version required 2.2.0
+    // Pegasus Server Version 2.2.0 required
   }
 
   public BulkLoaderConfig(FDSConfig fdsConfig, String clusterName, String tableName)
       throws PegasusSparkException {
     super(fdsConfig, clusterName, tableName);
     initTableInfo(); // table id, partitionCount, version are fetched via gateway by default.
-    // Pegasus Server Version required 2.2.0
+    // Pegasus Server Version  2.2.0 required
   }
 
   /**
@@ -49,29 +49,11 @@ public class BulkLoaderConfig extends CommonConfig {
    * @throws PegasusSparkException
    */
   public BulkLoaderConfig initTableInfo() throws PegasusSparkException {
-    TableInfo tableInfo;
-    DataVersion dataVersion = getDataVersion();
-
-    tableInfo = Cluster.getTableInfo(getClusterName(), getTableName());
-    if (dataVersion == null) {
-      int version = Cluster.getTableVersion(tableInfo);
-      switch (version) {
-        case 0:
-          dataVersion = new DataV0();
-          break;
-        case 1:
-          dataVersion = new DataV1();
-          break;
-        default:
-          throw new PegasusSparkException(String.format("Not support data version: %d", version));
-      }
-    }
-
+    TableInfo tableInfo = Cluster.getTableInfo(getClusterName(), getTableName());
     setTableInfo(
         Integer.parseInt(tableInfo.general.app_id),
         Integer.parseInt(tableInfo.general.partition_count),
-        dataVersion);
-
+        Cluster.getTableVersion(tableInfo));
     LOG.info(
         "Init table info success:"
             + String.format(
@@ -85,17 +67,29 @@ public class BulkLoaderConfig extends CommonConfig {
   }
 
   /**
-   * pegasus table id and partitionCount
+   * pegasus table id, partitionCount and data version. if Pegasus Server Version >= 2.2.0, it can
+   * be auto-init via {@linkplain BulkLoaderConfig#initTableInfo()}
    *
    * @param tableId
    * @param tablePartitionCount
-   * @param version
+   * @param dataVersion 0 or 1
    * @return
    */
-  public BulkLoaderConfig setTableInfo(int tableId, int tablePartitionCount, DataVersion version) {
+  public BulkLoaderConfig setTableInfo(int tableId, int tablePartitionCount, int dataVersion)
+      throws PegasusSparkException {
     this.tableId = tableId;
     this.tablePartitionCount = tablePartitionCount;
-    this.tableDataVersion = version;
+    switch (dataVersion) {
+      case 0:
+        this.tableDataVersion = new DataV0();
+        break;
+      case 1:
+        this.tableDataVersion = new DataV1();
+        break;
+      default:
+        throw new PegasusSparkException(
+            String.format("Not support write data version: %d", dataVersion));
+    }
     return this;
   }
 
