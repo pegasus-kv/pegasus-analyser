@@ -4,6 +4,7 @@ import com.xiaomi.infra.pegasus.spark.PegasusSparkException;
 import com.xiaomi.infra.pegasus.spark.RemoteFileSystem;
 import com.xiaomi.infra.pegasus.spark.RocksDBOptions;
 import com.xiaomi.infra.pegasus.spark.bulkloader.DataMetaInfo.FileInfo;
+import com.xiaomi.infra.pegasus.spark.utils.AutoRetryer;
 import com.xiaomi.infra.pegasus.spark.utils.FlowController;
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -80,6 +81,7 @@ class BulkLoader {
     try {
       createBulkLoadInfoFile();
       createSstFile();
+      AutoRetryer.getDefaultRetryer().call(this::createBulkLoadMetaDataFile);
       createBulkLoadMetaDataFile();
     } catch (Exception e) {
       throw new PegasusSparkException(
@@ -147,12 +149,14 @@ class BulkLoader {
             + curFileIndex);
   }
 
-  private void createBulkLoadMetaDataFile() throws PegasusSparkException, IOException {
+  private boolean createBulkLoadMetaDataFile() throws PegasusSparkException, IOException {
     long start = System.currentTimeMillis();
     FileStatus[] fileStatuses = remoteFileSystem.getFileStatus(partitionPath);
 
     for (FileStatus fileStatus : fileStatuses) {
-      generateFileMetaInfo(fileStatus);
+      if (!generateFileMetaInfo(fileStatus)) {
+        return false;
+      }
     }
 
     dataMetaInfo.file_total_size = totalSize.get();
@@ -160,14 +164,20 @@ class BulkLoader {
     bulkLoadMetaDataWriter.write(dataMetaInfo.toJsonString());
     bulkLoadMetaDataWriter.close();
     LOG.info("create meta info successfully, time used is " + (System.currentTimeMillis() - start));
+    return true;
   }
 
-  private void generateFileMetaInfo(FileStatus fileStatus) throws PegasusSparkException {
+  private boolean generateFileMetaInfo(FileStatus fileStatus) throws PegasusSparkException {
     String filePath = fileStatus.getPath().toString();
 
     String fileName = fileStatus.getPath().getName();
     long fileSize = fileStatus.getLen();
     String fileMD5 = remoteFileSystem.getFileMD5(filePath);
+
+    if (fileSize <= 0) {
+      LOG.error(fileName + " get size failed, size=" + fileSize);
+      return false;
+    }
 
     FileInfo fileInfo = dataMetaInfo.new FileInfo(fileName, fileSize, fileMD5);
     dataMetaInfo.files.add(fileInfo);
@@ -175,5 +185,6 @@ class BulkLoader {
     totalSize.addAndGet(fileSize);
 
     LOG.debug(fileName + " meta info generates complete!");
+    return true;
   }
 }
