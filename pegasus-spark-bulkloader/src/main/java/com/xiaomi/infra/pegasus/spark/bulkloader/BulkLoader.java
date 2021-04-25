@@ -82,7 +82,6 @@ class BulkLoader {
       createBulkLoadInfoFile();
       createSstFile();
       AutoRetryer.getDefaultRetryer().call(this::createBulkLoadMetaDataFile);
-      createBulkLoadMetaDataFile();
     } catch (Exception e) {
       throw new PegasusSparkException(
           "generated bulkloader data failed, please check and retry!", e);
