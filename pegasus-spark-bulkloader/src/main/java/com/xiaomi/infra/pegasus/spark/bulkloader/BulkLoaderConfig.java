@@ -10,6 +10,7 @@ import com.xiaomi.infra.pegasus.spark.utils.gateway.TableInfo;
 import java.io.Serializable;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.rocksdb.CompressionType;
 
 /**
  * The config used for generating the pegasus data which will be placed as follow":
@@ -24,6 +25,7 @@ public class BulkLoaderConfig extends CommonConfig {
 
   private String dataPathRoot = "/pegasus-bulkloader";
   private AdvancedConfig advancedConfig = new AdvancedConfig();
+  private CompressionType compressionType = CompressionType.ZSTD_COMPRESSION;
 
   private DataVersion tableDataVersion;
   private int tableId;
@@ -89,6 +91,19 @@ public class BulkLoaderConfig extends CommonConfig {
   }
 
   /**
+   * Set which compression method is used to compress data, support list: NO_COMPRESSION,
+   * SNAPPY_COMPRESSION, ZLIB_COMPRESSION, BZLIB2_COMPRESSION, LZ4_COMPRESSION, LZ4HC_COMPRESSION,
+   * XPRESS_COMPRESSION, ZSTD_COMPRESSION, DISABLE_COMPRESSION_OPTION;
+   *
+   * @param compressType default is ZSTD_COMPRESSION
+   * @return this
+   */
+  public BulkLoaderConfig setDataCompressType(CompressionType compressType) {
+    this.compressionType = compressType;
+    return this;
+  }
+
+  /**
    * Set advanced configuration for bulk load job. See {@link AdvancedConfig} for more details.
    * (Optional)
    *
@@ -132,6 +147,10 @@ public class BulkLoaderConfig extends CommonConfig {
 
   public AdvancedConfig getAdvancedConfig() {
     return advancedConfig;
+  }
+
+  public CompressionType getCompressionType() {
+    return compressionType;
   }
 
   /**
