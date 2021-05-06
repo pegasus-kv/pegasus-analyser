@@ -70,9 +70,11 @@ class BulkLoader {
     this.dataMetaInfo = new DataMetaInfo();
 
     this.remoteFileSystem = config.getRemoteFileSystem();
-    this.sstFileWriterWrapper =
-        new SstFileWriterWrapper(
-            new RocksDBOptions(config.getRemoteFileSystemURL(), config.getRemoteFileSystemPort()));
+
+    RocksDBOptions rocksDBOptions =
+        new RocksDBOptions(config.getRemoteFileSystemURL(), config.getRemoteFileSystemPort());
+    rocksDBOptions.options.setCompressionType(config.getCompressionType());
+    this.sstFileWriterWrapper = new SstFileWriterWrapper(rocksDBOptions);
     this.flowController =
         new FlowController(config.getTablePartitionCount(), config.getRateLimiterConfig());
   }
