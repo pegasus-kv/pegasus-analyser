@@ -25,7 +25,7 @@ public class ColdBackupConfig extends CommonConfig implements Config {
   private static final long DEFAULT_READ_AHEAD_SIZE_MB = 1;
 
   private String backupID;
-  private String rootPath = "/";
+  private String rootPath = "";
   private String policyName = "";
   private long readAheadSize;
   private int fileOpenCount;
@@ -47,9 +47,8 @@ public class ColdBackupConfig extends CommonConfig implements Config {
 
   // support Pegasus Server version 2.2.0
   public ColdBackupConfig(
-      FDSConfig fdsConfig, String rootPath, String backupID, String clusterName, String tableName) {
+      FDSConfig fdsConfig, String backupID, String clusterName, String tableName) {
     super(fdsConfig, clusterName, tableName);
-    this.rootPath = rootPath;
     this.backupID = backupID;
     initConfig();
   }
