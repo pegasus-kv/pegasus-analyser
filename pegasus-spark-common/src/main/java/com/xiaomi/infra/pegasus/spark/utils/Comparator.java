@@ -17,11 +17,12 @@ public class Comparator {
       int pos = 0;
 
       for (byte b1 : byteArray1) {
-        byte b2 = byteArray2[pos];
+        int b1int = b1 & 0xff;
+        int b2int = byteArray2[pos] & 0xff;
 
-        if (b1 == b2) {
+        if (b1int == b2int) {
           pos++;
-        } else if (b1 < b2) {
+        } else if (b1int < b2int) {
           return -1;
         } else {
           return 1;
@@ -33,11 +34,12 @@ public class Comparator {
       int pos = 0;
 
       for (byte b2 : byteArray2) {
-        byte b1 = byteArray1[pos];
+        int b1int = byteArray1[pos] & 0xff;
+        int b2int = b2 & 0xff;
 
-        if (b1 == b2) {
+        if (b1int == b2int) {
           pos++;
-        } else if (b1 < b2) {
+        } else if (b1int < b2int) {
           return -1;
         } else {
           return 1;
