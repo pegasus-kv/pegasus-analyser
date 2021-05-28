@@ -150,24 +150,32 @@ class BulkLoader {
             + curFileIndex);
   }
 
-  private boolean createBulkLoadMetaDataFile() throws PegasusSparkException, IOException {
+  private boolean createBulkLoadMetaDataFile() throws PegasusSparkException {
     long start = System.currentTimeMillis();
-    FileStatus[] fileStatuses = remoteFileSystem.getFileStatus(partitionPath);
+    try {
+      FileStatus[] fileStatuses = remoteFileSystem.getFileStatus(partitionPath);
+      for (FileStatus fileStatus : fileStatuses) {
+        generateFileMetaInfo(fileStatus);
+      }
 
-    for (FileStatus fileStatus : fileStatuses) {
-      generateFileMetaInfo(fileStatus);
+      dataMetaInfo.file_total_size = totalSize.get();
+      BufferedWriter bulkLoadMetaDataWriter = remoteFileSystem.getWriter(bulkLoadMetaDataPath);
+      bulkLoadMetaDataWriter.write(dataMetaInfo.toJsonString());
+      bulkLoadMetaDataWriter.close();
+    } catch (IOException e) {
+      throw new PegasusSparkException(
+          "create bulkload_meta_dada file failed, error=" + e.getMessage());
     }
-
-    dataMetaInfo.file_total_size = totalSize.get();
-    BufferedWriter bulkLoadMetaDataWriter = remoteFileSystem.getWriter(bulkLoadMetaDataPath);
-    bulkLoadMetaDataWriter.write(dataMetaInfo.toJsonString());
-    bulkLoadMetaDataWriter.close();
     LOG.info("create meta info successfully, time used is " + (System.currentTimeMillis() - start));
     return true;
   }
 
   private void generateFileMetaInfo(FileStatus fileStatus) throws PegasusSparkException {
     String filePath = fileStatus.getPath().toString();
+    if (!filePath.contains(".sst")) {
+      LOG.warn(String.format("the file `%s` is not sst file, ignore it!", filePath));
+      return;
+    }
 
     String fileName = fileStatus.getPath().getName();
     long fileSize = fileStatus.getLen();
