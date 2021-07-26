@@ -24,42 +24,17 @@ public class ColdBackupConfig extends CommonConfig implements Config {
   private static final int DEFAULT_FILE_OPEN_COUNT = 50;
   private static final long DEFAULT_READ_AHEAD_SIZE_MB = 1;
 
-  private String backupID;
-  private String rootPath = "";
-  private String policyName = "";
+  private String policyName;
   private long readAheadSize;
   private int fileOpenCount;
   private String coldBackupTime;
   private DataVersion dataVersion;
 
-  // support Pegasus Server version 2.2.0
-  public ColdBackupConfig(
-      HDFSConfig hdfsConfig,
-      String rootPath,
-      String backupID,
-      String clusterName,
-      String tableName) {
-    super(hdfsConfig, clusterName, tableName);
-    this.rootPath = rootPath;
-    this.backupID = backupID;
-    initConfig();
-  }
-
-  // support Pegasus Server version 2.2.0
-  public ColdBackupConfig(
-      FDSConfig fdsConfig, String backupID, String clusterName, String tableName) {
-    super(fdsConfig, clusterName, tableName);
-    this.backupID = backupID;
-    initConfig();
-  }
-
-  // only support Pegasus Server version < 2.2.0
   public ColdBackupConfig(HDFSConfig hdfsConfig, String clusterName, String tableName) {
     super(hdfsConfig, clusterName, tableName);
     initConfig();
   }
 
-  // only support Pegasus Server version < 2.2.0
   public ColdBackupConfig(FDSConfig fdsConfig, String clusterName, String tableName) {
     super(fdsConfig, clusterName, tableName);
     initConfig();
@@ -104,8 +79,7 @@ public class ColdBackupConfig extends CommonConfig implements Config {
   }
 
   /**
-   * cold backup creating time. Pegasus Server Version < 2.2.0 required, if >= 2.2.0, please use
-   * {@linkplain ColdBackupConfig#backupID} in constructor
+   * cold backup creating time.
    *
    * @param coldBackupTime please </>creating time of cold backup data, accurate to day level. for
    *     example: 2019-09-11, default is null, means choose the latest data
@@ -163,14 +137,6 @@ public class ColdBackupConfig extends CommonConfig implements Config {
   public ColdBackupConfig setRateLimiterConfig(RateLimiterConfig rateLimiterConfig) {
     super.setRateLimiterConfig(rateLimiterConfig);
     return this;
-  }
-
-  public String getRootPath() {
-    return rootPath;
-  }
-
-  public String getBackupID() {
-    return backupID;
   }
 
   public long getReadAheadSize() {

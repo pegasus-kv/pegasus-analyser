@@ -8,6 +8,8 @@ import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
@@ -46,6 +48,15 @@ public class HDFSFileSystem implements RemoteFileSystem {
     } catch (IOException e) {
       throw new PegasusSparkException("get file status failed:", e);
     }
+  }
+
+  public List<String> listSubPath(String parentPath) throws PegasusSparkException {
+    FileStatus[] status = getFileStatus(parentPath);
+    ArrayList<String> subPaths = new ArrayList<>();
+    for (FileStatus fileStatus : status) {
+      subPaths.add(fileStatus.getPath().toString());
+    }
+    return subPaths;
   }
 
   public boolean exist(String path) throws PegasusSparkException {
