@@ -10,15 +10,12 @@ import org.apache.commons.logging.LogFactory;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-
 public abstract class PathEncoder {
   private static final Log LOG = LogFactory.getLog(PathEncoder.class);
 
   private static final SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd");
 
-  /**
-   * V1: /clusterName/policyName/backupID/nameAndID/partition/chkpt_XXX/sst
-   */
+  /** V1: /clusterName/policyName/backupID/nameAndID/partition/chkpt_XXX/sst */
   public static class EncoderV1 extends PathEncoder {
     public EncoderV1(ColdBackupConfig config) {
       super(config);
@@ -47,9 +44,7 @@ public abstract class PathEncoder {
     }
   }
 
-  /**
-   * V2: /clusterName/backupID/nameAndID/partition/chkpt_XXX/sst
-   */
+  /** V2: /clusterName/backupID/nameAndID/partition/chkpt_XXX/sst */
   public static class EncoderV2 extends PathEncoder {
     public EncoderV2(ColdBackupConfig config) {
       super(config);
@@ -58,8 +53,24 @@ public abstract class PathEncoder {
     @Override
     public String searchLatestBackupID(List<String> idPathList) throws PegasusSparkException {
       for (int i = idPathList.size() - 1; i >= 0; i--) {
-        String nameWithId =
-            encodeTableNameAndId(idPathList.get(i), coldBackupConfig.getTableName());
+        String nameWithId;
+        try {
+          nameWithId = encodeTableNameAndId(idPathList.get(i), coldBackupConfig.getTableName());
+        } catch (Exception e) {
+          LOG.warn(
+              "try next timestamp folder for table "
+                  + coldBackupConfig.getTableName()
+                  + ", because "
+                  + e.getMessage());
+          continue;
+        }
+        if (nameWithId.equals("")) {
+          throw new PegasusSparkException(
+              "get latest policy id from "
+                  + rootPath
+                  + " failed, no backup id existed for table:"
+                  + coldBackupConfig.getTableName());
+        }
         List<String> tablePathList =
             coldBackupConfig.getRemoteFileSystem().listSubPath(idPathList.get(i));
         for (String tablePath : tablePathList) {
