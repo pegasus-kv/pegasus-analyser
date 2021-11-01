@@ -93,6 +93,11 @@ class ColdBackupLoader implements PegasusLoader {
 
     @Override
     public PegasusRecord restore() {
+      if (scannerVersion != null) {
+        return scannerVersion.restore(rocksIterator);
+      }
+      scannerVersion = new AutoDetectDataVersion();
+      LOG.warn("user not set data version, will try auto detect data version");
       return scannerVersion.restore(rocksIterator);
     }
 
