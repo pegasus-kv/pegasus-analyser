@@ -17,6 +17,7 @@ import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.utils.URIBuilder;
+import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.protocol.HttpContext;
@@ -77,6 +78,21 @@ public class HttpClient {
     }
   }
 
+  public static HttpResponse post(String path, String jsonStr) throws PegasusSparkException {
+    HttpPost request = new HttpPost(path);
+    try {
+      request.setHeader("Accept", "application/json");
+      request.setHeader("Content-Type", "application/json");
+      request.setEntity(new StringEntity(jsonStr, "UTF-8"));
+      return httpClient.execute(request);
+    } catch (ParseException | IOException e) {
+      throw new PegasusSparkException(
+          String.format("post to %s failed, reason: %s", request.getURI(), e.getMessage()));
+    } catch (Exception e) {
+      throw new PegasusSparkException(String.format("post failed, reason: %s", e.getMessage()));
+    }
+  }
+
   private static List<NameValuePair> parseParams(Map<String, String> params) {
     List<NameValuePair> uriParams = new ArrayList<>();
     if (params != null) {
@@ -86,11 +102,5 @@ public class HttpClient {
       }
     }
     return uriParams;
-  }
-
-  // TODO(jiashuo1)
-  public HttpResponse post(String path, Map<String, String> params, String body) {
-    HttpPost request = new HttpPost(path);
-    return null;
   }
 }
