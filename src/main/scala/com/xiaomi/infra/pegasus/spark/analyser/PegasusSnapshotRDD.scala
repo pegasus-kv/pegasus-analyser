@@ -3,6 +3,7 @@ package com.xiaomi.infra.pegasus.spark.analyser
 import com.xiaomi.infra.pegasus.spark.common.utils.JNILibraryLoader
 import org.apache.commons.logging.LogFactory
 import org.apache.spark.rdd.RDD
+import org.apache.spark.util.TaskCompletionListener
 import org.apache.spark.{Partition, SparkContext, TaskContext}
 import org.rocksdb.RocksDB
 
@@ -45,6 +46,7 @@ class PegasusSnapshotRDD private[analyser] (
     // Loads the librocksdb library into jvm.
     JNILibraryLoader.load()
 
+    val iterator = new PartitionIterator(context, snapshotLoader, split.index)
     LOG.info(
       "Create iterator for \"%s\" \"%s\" [pid: %d]"
         .format(
@@ -53,7 +55,13 @@ class PegasusSnapshotRDD private[analyser] (
           split.index
         )
     )
-    new PartitionIterator(context, snapshotLoader, split.index)
+    // Register an on-task-completion callback to release the resources.
+    context.addTaskCompletionListener(new TaskCompletionListener {
+      override def onTaskCompletion(context: TaskContext): Unit = {
+        iterator.close()
+      }
+    })
+    iterator
   }
 
   override protected def getPartitions: Array[Partition] = {

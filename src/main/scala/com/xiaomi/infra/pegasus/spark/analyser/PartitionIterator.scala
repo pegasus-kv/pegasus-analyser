@@ -10,7 +10,7 @@ import org.apache.spark.TaskContext
 private[analyser] class PartitionIterator private (
     context: TaskContext,
     val pid: Int
-) extends Iterator[PegasusRecord] {
+) extends Iterator[PegasusRecord] with AutoCloseable {
 
   private val LOG = LogFactory.getLog(classOf[PartitionIterator])
 
@@ -34,14 +34,9 @@ private[analyser] class PartitionIterator private (
       nextRecord = pegasusScanner.restore()
     }
     name = "PartitionIterator[pid=%d]".format(pid)
-
-    // Register an on-task-completion callback to release the resources.
-    context.addTaskCompletionListener { context =>
-      close()
-    }
   }
 
-  private def close() {
+  override def close() {
     if (!closed) {
       // release the C++ pointers
       pegasusScanner.close()
