@@ -1,4 +1,4 @@
-package com.xiaomi.infra.pegasus.spark.utils.gateway;
+package com.xiaomi.infra.pegasus.spark.common.utils.gateway;
 
 import java.io.Serializable;
 

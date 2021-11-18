@@ -1,8 +1,8 @@
-package com.xiaomi.infra.pegasus.spark.utils.gateway;
+package com.xiaomi.infra.pegasus.spark.common.utils.gateway;
 
 import com.google.gson.reflect.TypeToken;
-import com.xiaomi.infra.pegasus.spark.PegasusSparkException;
-import com.xiaomi.infra.pegasus.spark.utils.JsonParser;
+import com.xiaomi.infra.pegasus.spark.common.PegasusSparkException;
+import com.xiaomi.infra.pegasus.spark.common.utils.JsonParser;
 import java.io.IOException;
 import java.lang.reflect.Type;
 import java.util.ArrayList;

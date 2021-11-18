@@ -1,8 +1,8 @@
 package com.xiaomi.infra.pegasus.spark.analyser;
 
-import com.xiaomi.infra.pegasus.spark.PegasusSparkException;
-import com.xiaomi.infra.pegasus.spark.RocksDBOptions;
-import com.xiaomi.infra.pegasus.spark.utils.FlowController;
+import com.xiaomi.infra.pegasus.spark.common.PegasusSparkException;
+import com.xiaomi.infra.pegasus.spark.common.RocksDBOptions;
+import com.xiaomi.infra.pegasus.spark.common.utils.FlowController;
 import java.util.Map;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;

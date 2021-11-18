@@ -1,4 +1,4 @@
-package com.xiaomi.infra.pegasus.spark;
+package com.xiaomi.infra.pegasus.spark.common;
 
 import java.io.Serializable;
 

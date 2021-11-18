@@ -1,8 +1,8 @@
 package com.xiaomi.infra.pegasus.spark.analyser.examples.parquet
 
-import com.xiaomi.infra.pegasus.spark.FDSConfig
 import com.xiaomi.infra.pegasus.spark.analyser.{ColdBackupConfig, DataV0}
 import com.xiaomi.infra.pegasus.spark.analyser.CustomImplicits._
+import com.xiaomi.infra.pegasus.spark.common.FDSConfig
 import org.apache.spark.sql.{Row, SaveMode, SparkSession}
 
 object ConvertParquet {

@@ -1,7 +1,7 @@
 package com.xiaomi.infra.pegasus.spark.bulkloader
 
 import com.xiaomi.infra.pegasus.client.{HashKeyData, SetItem}
-import com.xiaomi.infra.pegasus.spark.utils.Comparator
+import com.xiaomi.infra.pegasus.spark.common.utils.Comparator
 import org.apache.spark.rdd.RDD
 
 /**

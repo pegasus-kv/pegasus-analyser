@@ -1,4 +1,4 @@
-package com.xiaomi.infra.pegasus.spark.utils;
+package com.xiaomi.infra.pegasus.spark.common.utils;
 
 import com.github.rholder.retry.Retryer;
 import com.github.rholder.retry.RetryerBuilder;
