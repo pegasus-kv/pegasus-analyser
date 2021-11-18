@@ -1,7 +1,7 @@
 package com.xiaomi.infra.pegasus.spark.bulkloader;
 
 import com.xiaomi.infra.pegasus.client.ClientOptions;
-import com.xiaomi.infra.pegasus.spark.utils.FlowController.RateLimiterConfig;
+import com.xiaomi.infra.pegasus.spark.common.utils.FlowController.RateLimiterConfig;
 import java.io.Serializable;
 import java.util.List;
 
@@ -35,7 +35,7 @@ public class OnlineLoaderConfig implements Serializable {
 
   /**
    * set RateLimiter config to control request flow that include `qpsLimiter` and `bytesLimiter`,
-   * detail see {@link com.xiaomi.infra.pegasus.spark.utils.FlowController} and {@link
+   * detail see {@link com.xiaomi.infra.pegasus.spark.common.utils.FlowController} and {@link
    * RateLimiterConfig}
    *
    * @param rateLimiterConfig see {@link RateLimiterConfig}

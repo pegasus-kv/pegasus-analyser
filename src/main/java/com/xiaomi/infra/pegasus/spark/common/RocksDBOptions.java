@@ -1,4 +1,4 @@
-package com.xiaomi.infra.pegasus.spark;
+package com.xiaomi.infra.pegasus.spark.common;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;

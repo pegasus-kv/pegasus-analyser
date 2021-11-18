@@ -1,6 +1,6 @@
 package com.xiaomi.infra.pegasus.spark.analyser;
 
-import com.xiaomi.infra.pegasus.spark.PegasusSparkException;
+import com.xiaomi.infra.pegasus.spark.common.PegasusSparkException;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.text.SimpleDateFormat;

@@ -1,6 +1,6 @@
 package com.xiaomi.infra.pegasus.spark.bulkloader
 
-import com.xiaomi.infra.pegasus.spark.utils.KeyHasher
+import com.xiaomi.infra.pegasus.spark.common.utils.KeyHasher
 import org.apache.spark.Partitioner
 
 /**

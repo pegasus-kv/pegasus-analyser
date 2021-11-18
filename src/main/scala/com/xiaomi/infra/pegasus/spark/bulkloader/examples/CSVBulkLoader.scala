@@ -1,10 +1,10 @@
 package com.xiaomi.infra.pegasus.spark.bulkloader.examples
 
-import com.xiaomi.infra.pegasus.spark.HDFSConfig
 import com.xiaomi.infra.pegasus.spark.bulkloader.DataV0
 import com.xiaomi.infra.pegasus.spark.bulkloader.BulkLoaderConfig
 import org.apache.spark.{SparkConf, SparkContext}
 import com.xiaomi.infra.pegasus.spark.bulkloader.CustomImplicits._
+import com.xiaomi.infra.pegasus.spark.common.HDFSConfig
 
 object CSVBulkLoader {
 

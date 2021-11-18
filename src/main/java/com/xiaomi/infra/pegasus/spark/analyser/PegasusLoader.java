@@ -1,7 +1,7 @@
 package com.xiaomi.infra.pegasus.spark.analyser;
 
-import com.xiaomi.infra.pegasus.spark.CommonConfig;
-import com.xiaomi.infra.pegasus.spark.PegasusSparkException;
+import com.xiaomi.infra.pegasus.spark.common.CommonConfig;
+import com.xiaomi.infra.pegasus.spark.common.PegasusSparkException;
 import java.io.Serializable;
 import org.rocksdb.RocksDBException;
 

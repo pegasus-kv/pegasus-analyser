@@ -1,6 +1,6 @@
-package com.xiaomi.infra.pegasus.spark.utils.gateway;
+package com.xiaomi.infra.pegasus.spark.common.utils.gateway;
 
-import com.xiaomi.infra.pegasus.spark.PegasusSparkException;
+import com.xiaomi.infra.pegasus.spark.common.PegasusSparkException;
 import java.io.IOException;
 import java.net.SocketException;
 import java.net.URI;

@@ -1,4 +1,4 @@
-package com.xiaomi.infra.pegasus.spark.utils;
+package com.xiaomi.infra.pegasus.spark.common.utils;
 
 import java.nio.ByteBuffer;
 import org.apache.commons.lang3.Validate;

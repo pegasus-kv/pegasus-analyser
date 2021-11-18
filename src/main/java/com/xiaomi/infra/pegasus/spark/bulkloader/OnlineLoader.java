@@ -5,7 +5,7 @@ import com.xiaomi.infra.pegasus.client.PException;
 import com.xiaomi.infra.pegasus.client.PegasusClientFactory;
 import com.xiaomi.infra.pegasus.client.PegasusClientInterface;
 import com.xiaomi.infra.pegasus.client.SetItem;
-import com.xiaomi.infra.pegasus.spark.utils.FlowController;
+import com.xiaomi.infra.pegasus.spark.common.utils.FlowController;
 import java.util.List;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.logging.Log;

@@ -1,11 +1,11 @@
 package com.xiaomi.infra.pegasus.spark.analyser;
 
-import com.xiaomi.infra.pegasus.spark.CommonConfig;
-import com.xiaomi.infra.pegasus.spark.FDSConfig;
-import com.xiaomi.infra.pegasus.spark.HDFSConfig;
-import com.xiaomi.infra.pegasus.spark.PegasusSparkException;
-import com.xiaomi.infra.pegasus.spark.utils.FlowController.RateLimiterConfig;
-import com.xiaomi.infra.pegasus.spark.utils.gateway.Cluster;
+import com.xiaomi.infra.pegasus.spark.common.CommonConfig;
+import com.xiaomi.infra.pegasus.spark.common.FDSConfig;
+import com.xiaomi.infra.pegasus.spark.common.HDFSConfig;
+import com.xiaomi.infra.pegasus.spark.common.PegasusSparkException;
+import com.xiaomi.infra.pegasus.spark.common.utils.FlowController.RateLimiterConfig;
+import com.xiaomi.infra.pegasus.spark.common.utils.gateway.Cluster;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -127,7 +127,7 @@ public class ColdBackupConfig extends CommonConfig implements Config {
 
   /**
    * set RateLimiter config to control request flow that include `qpsLimiter` and `bytesLimiter`,
-   * detail see {@link com.xiaomi.infra.pegasus.spark.utils.FlowController} and {@link
+   * detail see {@link com.xiaomi.infra.pegasus.spark.common.utils.FlowController} and {@link
    * RateLimiterConfig}
    *
    * @param rateLimiterConfig see {@link RateLimiterConfig}

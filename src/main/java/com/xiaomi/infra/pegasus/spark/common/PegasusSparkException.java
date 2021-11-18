@@ -1,4 +1,4 @@
-package com.xiaomi.infra.pegasus.spark;
+package com.xiaomi.infra.pegasus.spark.common;
 
 public class PegasusSparkException extends Exception {
   private static final String VERSION_PREFIX = loadVersion() + ": ";

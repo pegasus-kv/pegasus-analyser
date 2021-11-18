@@ -1,7 +1,7 @@
 package com.xiaomi.infra.pegasus.spark.analyser;
 
-import com.xiaomi.infra.pegasus.spark.PegasusSparkException;
 import com.xiaomi.infra.pegasus.spark.analyser.Config.DataType;
+import com.xiaomi.infra.pegasus.spark.common.PegasusSparkException;
 
 class PegasusLoaderFactory {
 

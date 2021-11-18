@@ -5,7 +5,7 @@ import java.time.Duration
 import com.xiaomi.infra.pegasus.client.{ClientOptions, HashKeyData, SetItem}
 import com.xiaomi.infra.pegasus.spark.bulkloader.CustomImplicits._
 import com.xiaomi.infra.pegasus.spark.bulkloader.OnlineLoaderConfig
-import com.xiaomi.infra.pegasus.spark.utils.FlowController.RateLimiterConfig
+import com.xiaomi.infra.pegasus.spark.common.utils.FlowController.RateLimiterConfig
 import org.apache.spark.{SparkConf, SparkContext}
 
 object CSVOnlineLoader {

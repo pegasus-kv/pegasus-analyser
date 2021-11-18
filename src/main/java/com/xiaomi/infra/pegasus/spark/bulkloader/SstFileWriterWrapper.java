@@ -2,9 +2,9 @@ package com.xiaomi.infra.pegasus.spark.bulkloader;
 
 import com.github.rholder.retry.RetryException;
 import com.github.rholder.retry.Retryer;
-import com.xiaomi.infra.pegasus.spark.PegasusSparkException;
-import com.xiaomi.infra.pegasus.spark.RocksDBOptions;
-import com.xiaomi.infra.pegasus.spark.utils.AutoRetryer;
+import com.xiaomi.infra.pegasus.spark.common.PegasusSparkException;
+import com.xiaomi.infra.pegasus.spark.common.RocksDBOptions;
+import com.xiaomi.infra.pegasus.spark.common.utils.AutoRetryer;
 import java.util.concurrent.ExecutionException;
 import org.rocksdb.RocksDBException;
 import org.rocksdb.SstFileWriter;

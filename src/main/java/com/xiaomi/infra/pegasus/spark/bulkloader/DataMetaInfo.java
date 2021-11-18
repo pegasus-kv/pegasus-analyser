@@ -1,6 +1,6 @@
 package com.xiaomi.infra.pegasus.spark.bulkloader;
 
-import com.xiaomi.infra.pegasus.spark.utils.JsonParser;
+import com.xiaomi.infra.pegasus.spark.common.utils.JsonParser;
 import java.util.ArrayList;
 
 class DataMetaInfo {
