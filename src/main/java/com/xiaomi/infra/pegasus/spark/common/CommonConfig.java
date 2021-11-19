@@ -10,6 +10,7 @@ public abstract class CommonConfig implements Serializable {
   private RateLimiterConfig rateLimiterConfig;
 
   private String remoteFileSystemURL;
+  private String remoteFileSystemPath;
   private String remoteFileSystemPort;
   private String clusterName;
   private String tableName;
@@ -27,6 +28,7 @@ public abstract class CommonConfig implements Serializable {
   private void initConfig(HDFSConfig config, String clusterName, String tableName) {
     this.rateLimiterConfig = new RateLimiterConfig();
     this.remoteFileSystemURL = config.getUrl();
+    this.remoteFileSystemPath = config.getPath();
     this.remoteFileSystemPort = config.getPort();
     this.clusterName = clusterName;
     this.tableName = tableName;
@@ -51,6 +53,14 @@ public abstract class CommonConfig implements Serializable {
 
   public void setTableName(String tableName) {
     this.tableName = tableName;
+  }
+
+  public String getRemoteFileSystemPath() {
+    return remoteFileSystemPath;
+  }
+
+  public void setRemoteFileSystemPath(String remoteFileSystemPath) {
+    this.remoteFileSystemPath = remoteFileSystemPath;
   }
 
   public RemoteFileSystem getRemoteFileSystem() {

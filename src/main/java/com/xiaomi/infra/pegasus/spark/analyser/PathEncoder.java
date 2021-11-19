@@ -22,32 +22,6 @@ public abstract class PathEncoder {
     }
 
     @Override
-    public String encodeTableNameAndId(String backupIDPath, String tableName)
-        throws PegasusSparkException {
-      String backupInfo;
-      String backupInfoUrl = backupIDPath + "/" + "backup_info";
-      try (BufferedReader bufferedReader =
-          coldBackupConfig.getRemoteFileSystem().getReader(backupInfoUrl)) {
-        while ((backupInfo = bufferedReader.readLine()) != null) {
-          JSONObject jsonObject = new JSONObject(backupInfo);
-          JSONObject tables = jsonObject.getJSONObject("app_names");
-          Iterator<String> iterator = tables.keys();
-          while (iterator.hasNext()) {
-            String tableId = iterator.next();
-            if (tables.get(tableId).equals(tableName)) {
-              return tableName + "_" + tableId;
-            }
-          }
-        }
-      } catch (IOException | JSONException e) {
-        throw new PegasusSparkException(
-            "get table[" + tableName + "] id failed, [url:" + backupIDPath + "]", e);
-      }
-      throw new PegasusSparkException(
-          "can't find the table[" + tableName + "] id, [url:" + backupIDPath + "]");
-    }
-
-    @Override
     public String searchLatestBackupID(List<String> idPathList) throws PegasusSparkException {
       if (idPathList.size() != 0) {
         return idPathList.get(idPathList.size() - 1);
@@ -74,29 +48,6 @@ public abstract class PathEncoder {
   public static class EncoderV2 extends PathEncoder {
     public EncoderV2(ColdBackupConfig config) {
       super(config);
-    }
-
-    @Override
-    public String encodeTableNameAndId(String backupIDPath, String tableName)
-        throws PegasusSparkException {
-      String backupInfo;
-      String backupInfoUrl = backupIDPath + "/" + "backup_info";
-      try (BufferedReader bufferedReader =
-          coldBackupConfig.getRemoteFileSystem().getReader(backupInfoUrl)) {
-        while ((backupInfo = bufferedReader.readLine()) != null) {
-          JSONObject jsonObject = new JSONObject(backupInfo);
-          String name = jsonObject.getString("app_name");
-          String id = jsonObject.getString("app_id");
-          if (name.equals(tableName)) {
-            return name + "_" + id;
-          }
-        }
-      } catch (IOException | JSONException e) {
-        throw new PegasusSparkException(
-            "get table[" + tableName + "] id failed, [url:" + backupIDPath + "]", e);
-      }
-      throw new PegasusSparkException(
-          "can't find the table[" + tableName + "] id, [url:" + backupIDPath + "]");
     }
 
     @Override
@@ -156,8 +107,9 @@ public abstract class PathEncoder {
     this.coldBackupConfig = config;
     this.rootPath =
         String.format(
-            "%s/%s/%s/",
+            "%s/%s/%s/%s/",
             coldBackupConfig.getRemoteFileSystemURL(),
+            coldBackupConfig.getRemoteFileSystemPath(),
             coldBackupConfig.getClusterName(),
             coldBackupConfig.getPolicyName() == null ? "" : coldBackupConfig.getPolicyName());
   }
@@ -246,8 +198,41 @@ public abstract class PathEncoder {
     }
   }
 
-  protected abstract String encodeTableNameAndId(String backupIDPath, String tableName)
-      throws PegasusSparkException;
+  public String encodeTableNameAndId(String backupIDPath, String tableName)
+      throws PegasusSparkException {
+    String infoMessage = null;
+    String backupInfo;
+    String backupInfoUrl = backupIDPath + "/" + "backup_info";
+    try (BufferedReader bufferedReader =
+        coldBackupConfig.getRemoteFileSystem().getReader(backupInfoUrl)) {
+      while ((backupInfo = bufferedReader.readLine()) != null) {
+        JSONObject jsonObject = new JSONObject(backupInfo);
+        if (backupInfo.contains("app_names")) {
+          infoMessage = "[app_names]";
+          JSONObject tables = jsonObject.getJSONObject("app_names");
+          Iterator<String> iterator = tables.keys();
+          while (iterator.hasNext()) {
+            String tableId = iterator.next();
+            if (tables.get(tableId).equals(tableName)) {
+              return tableName + "_" + tableId;
+            }
+          }
+        } else {
+          infoMessage = "[app_name]";
+          String name = jsonObject.getString("app_name");
+          int id = jsonObject.getInt("app_id");
+          if (name.equals(tableName)) {
+            return name + "_" + id;
+          }
+        }
+      }
+    } catch (IOException | JSONException e) {
+      throw new PegasusSparkException(
+          "get table[" + tableName + "] id failed, [url:" + backupIDPath + "]" + infoMessage, e);
+    }
+    throw new PegasusSparkException(
+        "can't find the table[" + tableName + "] id, [url:" + backupIDPath + "]" + infoMessage);
+  }
 
   protected abstract String searchLatestBackupID(List<String> idPathList)
       throws PegasusSparkException;

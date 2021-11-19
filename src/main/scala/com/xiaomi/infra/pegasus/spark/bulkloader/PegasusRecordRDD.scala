@@ -45,8 +45,9 @@ class PegasusRecordRDD(data: RDD[(PegasusKey, PegasusValue)]) {
 
   // not allow generate data in same path which usually has origin data
   private def checkTablePathExist(config: BulkLoaderConfig): Unit = {
-    val tablePath = config.getRemoteFileSystemURL + "/" +
-      config.getDataPathRoot + "/" + config.getClusterName + "/" + config.getTableName
+    val tablePath =
+      config.getRemoteFileSystemURL + "/" + config.getRemoteFileSystemPath +
+        "/" + config.getClusterName + "/" + config.getTableName
     val remoteFileSystem = config.getRemoteFileSystem
 
     if (remoteFileSystem.exist(tablePath)) {

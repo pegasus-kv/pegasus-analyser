@@ -23,7 +23,6 @@ import org.rocksdb.CompressionType;
 public class BulkLoaderConfig extends CommonConfig {
   private static final Log LOG = LogFactory.getLog(BulkLoaderConfig.class);
 
-  private String dataPathRoot = "/pegasus-bulkloader";
   private AdvancedConfig advancedConfig = new AdvancedConfig();
   private CompressionType compressionType = CompressionType.ZSTD_COMPRESSION;
 
@@ -80,17 +79,6 @@ public class BulkLoaderConfig extends CommonConfig {
   }
 
   /**
-   * The root path where the spark-generated Pegasus files are placed. (Required)
-   *
-   * @param dataPathRoot default is "/pegasus-bulkloader"
-   * @return this
-   */
-  public BulkLoaderConfig setDataPathRoot(String dataPathRoot) {
-    this.dataPathRoot = dataPathRoot;
-    return this;
-  }
-
-  /**
    * Set which compression method is used to compress data, support list: NO_COMPRESSION,
    * SNAPPY_COMPRESSION, ZLIB_COMPRESSION, BZLIB2_COMPRESSION, LZ4_COMPRESSION, LZ4HC_COMPRESSION,
    * XPRESS_COMPRESSION, ZSTD_COMPRESSION, DISABLE_COMPRESSION_OPTION;
@@ -127,10 +115,6 @@ public class BulkLoaderConfig extends CommonConfig {
   public BulkLoaderConfig setRateLimiterConfig(RateLimiterConfig rateLimiterConfig) {
     super.setRateLimiterConfig(rateLimiterConfig);
     return this;
-  }
-
-  public String getDataPathRoot() {
-    return dataPathRoot;
   }
 
   public DataVersion getDataVersion() {
