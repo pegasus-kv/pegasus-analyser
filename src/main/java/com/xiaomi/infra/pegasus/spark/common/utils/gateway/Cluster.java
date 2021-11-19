@@ -134,7 +134,7 @@ public class Cluster {
       if (queryResponse.backup_items[0].is_backup_failed) {
         throw new PegasusSparkException(
             String.format(
-                "export %s.%s to %s//%s failed, please check the pegasus server log",
+                "export %s.%s to %s %s failed, please check the pegasus server log",
                 cluster, table, remoteFileSystem, remotePath));
       }
 
@@ -149,7 +149,7 @@ public class Cluster {
     if (queryResponse.backup_items[0].end_time_ms == 0) {
       throw new PegasusSparkException(
           String.format(
-              "export %s.%s to %s//%s failed = [%s]%s, please check the pegasus server log",
+              "export %s.%s to %s %s failed = [%s]%s, please check the pegasus server log",
               queryResponse.err.Errno,
               queryResponse.hint_message,
               cluster,
@@ -160,7 +160,7 @@ public class Cluster {
 
     LOG.info(
         String.format(
-            "export %s.%s to %s//%s is completed", cluster, table, remoteFileSystem, remotePath));
+            "export %s.%s to %s %s is completed", cluster, table, remoteFileSystem, remotePath));
   }
 
   private static BackupInfo.ExecuteResponse sendBackupRequest(
