@@ -10,7 +10,8 @@ import org.apache.spark.TaskContext
 private[analyser] class PartitionIterator private (
     context: TaskContext,
     val pid: Int
-) extends Iterator[PegasusRecord] with AutoCloseable {
+) extends Iterator[PegasusRecord]
+    with AutoCloseable {
 
   private val LOG = LogFactory.getLog(classOf[PartitionIterator])
 
