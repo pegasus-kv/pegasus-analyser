@@ -225,4 +225,189 @@ public class Cluster {
     }
     return queryResponse;
   }
+
+  public static void startBulkLoad(
+      String clusterName, String tableName, String remoteFileSystem, String remotePath)
+      throws InterruptedException, PegasusSparkException {
+
+    BulkLoadInfo.QueryResponse queryResponse = queryBulkLoadResult(clusterName, tableName);
+    if (queryResponse.app_status.contains("BLS_CANCEL")) {
+      throw new PegasusSparkException("the last bulkload is " + queryResponse.app_status);
+    }
+
+    BulkLoadInfo.ExecuteResponse executeResponse =
+        sendBulkLoadRequest(clusterName, tableName, remoteFileSystem, remotePath);
+    while (!executeResponse.err.Errno.equals("ERR_OK")) {
+      if (executeResponse.err.Errno.equals("ERR_BUSY")) {
+        queryResponse = queryBulkLoadResult(clusterName, tableName);
+        if (queryResponse.app_status.contains("BLS_CANCEL")) {
+          throw new PegasusSparkException(
+              String.format(
+                  "last %s.%s bulkload is %s", clusterName, tableName, queryResponse.app_status));
+        }
+        LOG.info(
+            String.format(
+                "last bulkload[%s.%s] is running, process %s",
+                clusterName, tableName, queryResponse.app_status));
+        Thread.sleep(10000);
+        executeResponse = sendBulkLoadRequest(clusterName, tableName, remoteFileSystem, remotePath);
+        continue;
+      }
+      throw new PegasusSparkException(executeResponse.hint_message);
+    }
+
+    Thread.sleep(10000);
+    queryResponse = queryBulkLoadResult(clusterName, tableName);
+    if (!queryResponse.app_status.equals("BLS_DOWNLOADING")) {
+      LOG.warn("the first stage should be BLS_DOWNLOADING, but now is " + queryResponse.app_status);
+    }
+
+    while (queryResponse.err.Errno.equals("ERR_OK")) {
+      queryResponse = queryBulkLoadResult(clusterName, tableName);
+      if (queryResponse.app_status.contains("BLS_CANCEL")) {
+        throw new PegasusSparkException(
+            String.format(
+                "%s.%s bulkload is %s", clusterName, tableName, queryResponse.app_status));
+      }
+
+      if (queryResponse.app_status.equals("BLS_FAILED")) {
+        throw new PegasusSparkException(
+            String.format(
+                "bulkload[%s.%s] failed. message = %s",
+                clusterName, tableName, queryResponse.hint_message));
+      }
+
+      if (queryResponse.app_status.contains("BLS_SUCCEED")) {
+        LOG.info(
+            String.format(
+                "bulkload[%s.%s] is completed, process %s",
+                clusterName, tableName, queryResponse.app_status));
+        return;
+      }
+
+      LOG.info(
+          String.format(
+              "bulkload[%s.%s] is running, process %s",
+              clusterName, tableName, queryResponse.app_status));
+      Thread.sleep(10000);
+    }
+
+    if (queryResponse.err.Errno.equals("ERR_INVALID_STATE")
+        && queryResponse.hint_message.contains(" is not during bulk load")) {
+      LOG.info(
+          String.format(
+              "bulkload[%s.%s] may be completed. message = %s",
+              clusterName, tableName, queryResponse.hint_message));
+    }
+  }
+
+  public static BulkLoadInfo.ExecuteResponse sendBulkLoadRequest(
+      String clusterName, String tableName, String remoteFileSystem, String remotePath)
+      throws PegasusSparkException {
+    String path = String.format("%s/v1/bulkloadManager/start", metaGateWay);
+
+    BulkLoadInfo.ExecuteRequest executeRequest = new BulkLoadInfo.ExecuteRequest();
+    executeRequest.ClusterName = clusterName;
+    executeRequest.TableName = tableName;
+    executeRequest.RemoteProvider = remoteFileSystem;
+    executeRequest.RemotePath = remotePath;
+    HttpResponse httpResponse = HttpClient.post(path, JsonParser.getGson().toJson(executeRequest));
+
+    int code = httpResponse.getStatusLine().getStatusCode();
+    String error = httpResponse.getStatusLine().getReasonPhrase();
+    if (code != 200) {
+      throw new PegasusSparkException(
+          String.format(
+              "start bulkload[%s(%s)] via gateway[%s] failed, ErrCode = %d, error = %s",
+              clusterName, tableName, path, code, error));
+    }
+    BulkLoadInfo.ExecuteResponse bulkloadExecuteResponse;
+    String respString = "";
+    try {
+      respString = EntityUtils.toString(httpResponse.getEntity(), "UTF-8");
+      bulkloadExecuteResponse =
+          JsonParser.getGson().fromJson(respString, BulkLoadInfo.ExecuteResponse.class);
+    } catch (IOException e) {
+      throw new PegasusSparkException(
+          String.format("format the response to string failed: %s", e.getMessage()));
+    } catch (RuntimeException e) {
+      throw new PegasusSparkException(
+          String.format(
+              "parser the response to tableInfo failed: %s\n%s", e.getMessage(), respString));
+    }
+    return bulkloadExecuteResponse;
+  }
+
+  public static BulkLoadInfo.QueryResponse queryBulkLoadResult(String clusterName, String tableName)
+      throws PegasusSparkException {
+    String path = String.format("%s/v1/bulkloadManager/%s/%s", metaGateWay, clusterName, tableName);
+    Map<String, String> params = new HashMap<>();
+    HttpResponse httpResponse = HttpClient.get(path, params);
+
+    int code = httpResponse.getStatusLine().getStatusCode();
+    String error = httpResponse.getStatusLine().getReasonPhrase();
+    if (code != 200) {
+      throw new PegasusSparkException(
+          String.format(
+              "query bulkload[%s(%s)] via gateway[%s] failed, ErrCode = %d, error = %s",
+              clusterName, tableName, path, code, error));
+    }
+
+    BulkLoadInfo.QueryResponse queryResponse;
+    String respString = "";
+    try {
+      respString = EntityUtils.toString(httpResponse.getEntity(), "UTF-8");
+      queryResponse = JsonParser.getGson().fromJson(respString, BulkLoadInfo.QueryResponse.class);
+    } catch (IOException e) {
+      throw new PegasusSparkException(
+          String.format("format the response to string failed: %s", e.getMessage()));
+    } catch (RuntimeException e) {
+      if (respString.contains("is not during bulk load")) {
+        LOG.warn(String.format("%s.%s is not during bulk load", clusterName, tableName));
+        BulkLoadInfo.QueryResponse response = new BulkLoadInfo.QueryResponse();
+        response.err = new BulkLoadInfo.Error("ERR_OK");
+        response.app_status = "BLS_INVALID";
+        response.hint_message = e.getMessage();
+        return response;
+      } else {
+        throw new PegasusSparkException(
+            String.format(
+                "parser the response to queryResponse failed: %s\n%s", e.getMessage(), respString));
+      }
+    }
+    return queryResponse;
+  }
+
+  public static BulkLoadInfo.CancelResponse cancelBulkLoad(String clusterName, String tableName)
+      throws PegasusSparkException {
+    String path = String.format("%s/v1/bulkloadManager/cancel/", metaGateWay);
+    BulkLoadInfo.CancelRequest cancelRequest = new BulkLoadInfo.CancelRequest();
+    cancelRequest.ClusterName = clusterName;
+    cancelRequest.TableName = tableName;
+    HttpResponse httpResponse = HttpClient.post(path, JsonParser.getGson().toJson(cancelRequest));
+
+    int code = httpResponse.getStatusLine().getStatusCode();
+    String error = httpResponse.getStatusLine().getReasonPhrase();
+    if (code != 200) {
+      throw new PegasusSparkException(
+          String.format(
+              "cancel bulkload[%s(%s)] via gateway[%s] failed, ErrCode = %d, err = %s",
+              clusterName, tableName, path, code, error));
+    }
+
+    BulkLoadInfo.CancelResponse cancelResponse;
+    String respString = "";
+    try {
+      respString = EntityUtils.toString(httpResponse.getEntity(), "UTF-8");
+      cancelResponse = JsonParser.getGson().fromJson(respString, BulkLoadInfo.CancelResponse.class);
+    } catch (IOException e) {
+      throw new PegasusSparkException(
+          String.format("format the response to string failed: %s", e.getMessage()));
+    } catch (RuntimeException e) {
+      throw new PegasusSparkException(
+          String.format(
+              "parser the response to queryResponse failed: %s\n%s", e.getMessage(), respString));
+    }
+    return cancelResponse;
+  }
 }
