@@ -2,12 +2,13 @@ package com.xiaomi.infra.pegasus.spark.common.utils.gateway;
 
 import com.xiaomi.infra.pegasus.spark.common.PegasusSparkException;
 import java.io.IOException;
-import java.net.SocketException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.http.HttpResponse;
 import org.apache.http.HttpStatus;
 import org.apache.http.NameValuePair;
@@ -23,6 +24,7 @@ import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.protocol.HttpContext;
 
 public class HttpClient {
+  private static final Log LOG = LogFactory.getLog(Cluster.class);
 
   private static final org.apache.http.client.HttpClient httpClient;
   private static final RequestConfig config;
@@ -31,12 +33,31 @@ public class HttpClient {
     httpClient =
         HttpClientBuilder.create()
             .setRetryHandler(
-                (exception, executionCount, context) ->
-                    executionCount <= 5 && exception instanceof SocketException)
+                (e, i, httpContext) -> {
+                  if (i >= 1) {
+                    LOG.warn(
+                        String.format(
+                            "request failed = %s, try retry it. count = %d", e.getMessage(), i));
+                    try {
+                      Thread.sleep(1000);
+                    } catch (InterruptedException ie) {
+                      LOG.error("sleep 10s for retry failed" + ie.getMessage());
+                    }
+                  }
+                  return i <= 5 && e.getMessage().contains("timed out");
+                })
             .setServiceUnavailableRetryStrategy(
                 new ServiceUnavailableRetryStrategy() {
                   public boolean retryRequest(
                       HttpResponse response, int executionCount, HttpContext context) {
+                    if (executionCount > 1) {
+                      LOG.warn(
+                          String.format(
+                              "request failed = %s[%d], try retry it. count = %d",
+                              response.getStatusLine().getReasonPhrase(),
+                              response.getStatusLine().getStatusCode(),
+                              executionCount));
+                    }
                     return executionCount <= 5
                         && (response.getStatusLine().getStatusCode()
                                 == HttpStatus.SC_SERVICE_UNAVAILABLE
@@ -45,16 +66,16 @@ public class HttpClient {
                   }
 
                   public long getRetryInterval() {
-                    return 100;
+                    return 5000;
                   }
                 })
             .build();
 
     config =
         RequestConfig.custom()
-            .setConnectTimeout(1000)
-            .setConnectionRequestTimeout(1000)
-            .setSocketTimeout(1000)
+            .setConnectTimeout(30000)
+            .setConnectionRequestTimeout(30000)
+            .setSocketTimeout(30000)
             .build();
   }
 
