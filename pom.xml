@@ -94,21 +94,18 @@
       <groupId>com.xiaomi.infra</groupId>
       <artifactId>pegasus-client</artifactId>
       <version>1.11.10-for-spark-SNAPSHOT</version>
-      <scope>provided</scope>
     </dependency>
     <!--FDS: Only read fds backup need the dependency-->
     <dependency>
       <groupId>com.xiaomi.infra.galaxy</groupId>
       <artifactId>galaxy-hadoop</artifactId>
       <version>2.9.8-SNAPSHOT</version>
-      <scope>provided</scope>
     </dependency>
     <!--HDFS-->
     <dependency>
       <groupId>org.apache.hadoop</groupId>
       <artifactId>hadoop-hdfs</artifactId>
       <version>2.6.0-mdh3.12.24-jre8</version>
-      <scope>provided</scope>
       <!--exclusions for package conflict with spark-core_2.11-->
       <exclusions>
         <exclusion>
@@ -121,27 +118,23 @@
       <groupId>org.apache.hadoop</groupId>
       <artifactId>hadoop-common</artifactId>
       <version>2.6.0-mdh3.12.24-jre8</version>
-      <scope>provided</scope>
     </dependency>
     <!--Scala-->
     <dependency>
       <groupId>org.scala-lang</groupId>
       <artifactId>scala-library</artifactId>
       <version>2.11.12</version>
-      <scope>provided</scope>
     </dependency>
     <!--Spark-->
     <dependency>
       <groupId>org.apache.spark</groupId>
       <artifactId>spark-core_2.11</artifactId>
       <version>2.1.0-mdh2.1.0.1</version>
-      <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.spark</groupId>
       <artifactId>spark-sql_2.11</artifactId>
       <version>2.1.0-mdh2.1.0.1</version>
-      <scope>provided</scope>
     </dependency>
   </dependencies>
 
