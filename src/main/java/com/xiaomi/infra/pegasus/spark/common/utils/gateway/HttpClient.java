@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.commons.logging.Log;
@@ -39,7 +40,7 @@ public class HttpClient {
                         String.format(
                             "request failed = %s, try retry it. count = %d", e.getMessage(), i));
                     try {
-                      Thread.sleep(1000);
+                      Thread.sleep(30000);
                     } catch (InterruptedException ie) {
                       LOG.error("sleep 10s for retry failed" + ie.getMessage());
                     }
@@ -59,14 +60,15 @@ public class HttpClient {
                               executionCount));
                     }
                     return executionCount <= 5
-                        && (response.getStatusLine().getStatusCode()
-                                == HttpStatus.SC_SERVICE_UNAVAILABLE
-                            || response.getStatusLine().getStatusCode()
-                                == HttpStatus.SC_INTERNAL_SERVER_ERROR);
+                            && (response.getStatusLine().getStatusCode()
+                                    == HttpStatus.SC_SERVICE_UNAVAILABLE
+                                || response.getStatusLine().getStatusCode()
+                                    == HttpStatus.SC_INTERNAL_SERVER_ERROR)
+                        || response.getStatusLine().getStatusCode() == HttpStatus.SC_BAD_GATEWAY;
                   }
 
                   public long getRetryInterval() {
-                    return 5000;
+                    return 30000;
                   }
                 })
             .build();
