@@ -112,6 +112,11 @@ class BulkLoader {
       return;
     }
 
+    if (remoteFileSystem.exist(partitionPath)) {
+      LOG.warn(String.format("%s has existed, it will be deleted", partitionPath));
+      remoteFileSystem.delete(partitionPath, true);
+    }
+
     long start = System.currentTimeMillis();
     long count = 0;
 

@@ -19,7 +19,7 @@ public class BulkLoadInfo {
 
   public static class ExecuteResponse {
     public BulkLoadInfo.Error err;
-    public String hint_message;
+    public String hint_msg;
   }
 
   public static class QueryResponse {
@@ -29,7 +29,7 @@ public class BulkLoadInfo {
     public String[] partitions_status;
     public int max_replica_count;
     public String bulk_load_states;
-    public String hint_message;
+    public String hint_msg;
   }
 
   public static class CancelRequest {
@@ -39,6 +39,6 @@ public class BulkLoadInfo {
 
   public static class CancelResponse {
     public BulkLoadInfo.Error err;
-    public String hint_message;
+    public String hint_msg;
   }
 }

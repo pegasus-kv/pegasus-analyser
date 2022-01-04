@@ -28,21 +28,27 @@ public class Cluster {
     params.put("name", table);
     params.put("detail", "");
 
-    HttpResponse httpResponse = HttpClient.get(path, params);
-    int code = httpResponse.getStatusLine().getStatusCode();
-    if (code != 200) {
-      throw new PegasusSparkException(
-          String.format(
-              "get tableInfo[%s(%s)] from gateway failed, ErrCode = %d", cluster, table, code));
-    }
-
     TableInfo tableInfo;
+    String respString = "";
+    HttpResponse httpResponse = HttpClient.get(path, params);
     try {
-      String resp = EntityUtils.toString(httpResponse.getEntity(), "UTF-8");
-      tableInfo = JsonParser.getGson().fromJson(resp, TableInfo.class);
+      int code = httpResponse.getStatusLine().getStatusCode();
+      respString = EntityUtils.toString(httpResponse.getEntity(), "UTF-8");
+      if (code != 200) {
+        throw new PegasusSparkException(
+            String.format(
+                "get tableInfo[%s(%s)] from gateway failed, ErrCode = %d, err = %s",
+                cluster, table, code, respString));
+      }
+
+      tableInfo = JsonParser.getGson().fromJson(respString, TableInfo.class);
     } catch (IOException e) {
       throw new PegasusSparkException(
           String.format("format the response to tableInfo failed: %s", e.getMessage()));
+    } catch (RuntimeException e) {
+      throw new PegasusSparkException(
+          String.format(
+              "parser the response to tableInfo failed: %s\n%s", e.getMessage(), respString));
     }
     return tableInfo;
   }
@@ -127,7 +133,8 @@ public class Cluster {
     BackupInfo.ExecuteResponse executeResponse =
         Cluster.sendBackupRequest(cluster, table, remoteFileSystem, remotePath);
     if (!executeResponse.err.Errno.equals("ERR_OK")) {
-      throw new PegasusSparkException(executeResponse.hint_message);
+      throw new PegasusSparkException(
+          executeResponse.err.Errno + " : " + executeResponse.hint_message);
     }
     BackupInfo.QueryResponse queryResponse =
         Cluster.queryBackupResult(cluster, table, String.valueOf(executeResponse.backup_id));
@@ -177,16 +184,18 @@ public class Cluster {
     executeRequest.BackupPath = remotePath;
     HttpResponse httpResponse = HttpClient.post(path, JsonParser.getGson().toJson(executeRequest));
 
-    int code = httpResponse.getStatusLine().getStatusCode();
-    if (code != 200) {
-      throw new PegasusSparkException(
-          String.format(
-              "start backup[%s(%s)] via gateway failed, ErrCode = %d", cluster, table, code));
-    }
     BackupInfo.ExecuteResponse backupExecuteResponse;
     String respString = "";
     try {
+      int code = httpResponse.getStatusLine().getStatusCode();
       respString = EntityUtils.toString(httpResponse.getEntity(), "UTF-8");
+      if (code != 200) {
+        throw new PegasusSparkException(
+            String.format(
+                "start backup[%s(%s)] via gateway failed, ErrCode = %d, err = %s",
+                cluster, table, code, respString));
+      }
+
       backupExecuteResponse =
           JsonParser.getGson().fromJson(respString, BackupInfo.ExecuteResponse.class);
     } catch (IOException e) {
@@ -206,17 +215,16 @@ public class Cluster {
     Map<String, String> params = new HashMap<>();
     HttpResponse httpResponse = HttpClient.get(path, params);
 
-    int code = httpResponse.getStatusLine().getStatusCode();
-    if (code != 200) {
-      throw new PegasusSparkException(
-          String.format(
-              "query backup[%s(%s)] via gateway failed, ErrCode = %d", cluster, table, code));
-    }
-
     BackupInfo.QueryResponse queryResponse;
     String respString = "";
     try {
+      int code = httpResponse.getStatusLine().getStatusCode();
       respString = EntityUtils.toString(httpResponse.getEntity(), "UTF-8");
+      if (code != 200) {
+        throw new PegasusSparkException(
+            String.format(
+                "query backup[%s(%s)] via gateway failed, ErrCode = %d", cluster, table, code));
+      }
       queryResponse = JsonParser.getGson().fromJson(respString, BackupInfo.QueryResponse.class);
     } catch (IOException e) {
       throw new PegasusSparkException(
@@ -231,6 +239,16 @@ public class Cluster {
 
   public static void startBulkLoad(
       String cluster, String table, String remoteFileSystem, String remotePath)
+      throws PegasusSparkException, InterruptedException {
+    startBulkLoad(cluster, table, remoteFileSystem, remotePath, true);
+  }
+
+  public static void startBulkLoad(
+      String cluster,
+      String table,
+      String remoteFileSystem,
+      String remotePath,
+      boolean enableCompaction)
       throws InterruptedException, PegasusSparkException {
     LOG.info(
         String.format(
@@ -249,23 +267,28 @@ public class Cluster {
         queryResponse = queryBulkLoadResult(cluster, table);
         if (queryResponse.app_status.contains("BLS_CANCEL")) {
           throw new PegasusSparkException(
-              String.format("last %s.%s bulkload is %s", cluster, table, queryResponse.app_status));
+              String.format(
+                  "%s : last %s.%s bulkload is %s",
+                  executeResponse.err.Errno, cluster, table, queryResponse.app_status));
         }
         LOG.info(
             String.format(
-                "last bulkload[%s.%s] is running, process %s",
-                cluster, table, queryResponse.app_status));
+                "%s : last bulkload[%s.%s] is running, process %s",
+                executeResponse.err.Errno, cluster, table, queryResponse.app_status));
         Thread.sleep(10000);
         executeResponse = sendBulkLoadRequest(cluster, table, remoteFileSystem, remotePath);
         continue;
       }
-      throw new PegasusSparkException(executeResponse.hint_message);
+      throw new PegasusSparkException(executeResponse.err.Errno + " : " + executeResponse.hint_msg);
     }
 
     Thread.sleep(10000);
     queryResponse = queryBulkLoadResult(cluster, table);
     if (!queryResponse.app_status.equals("BLS_DOWNLOADING")) {
-      LOG.warn("the first stage should be BLS_DOWNLOADING, but now is " + queryResponse.app_status);
+      LOG.warn(
+          queryResponse.err.Errno
+              + " : the first stage should be BLS_DOWNLOADING, but now is "
+              + queryResponse.app_status);
     }
 
     while (queryResponse.err.Errno.equals("ERR_OK")) {
@@ -277,8 +300,7 @@ public class Cluster {
       if (queryResponse.app_status.equals("BLS_FAILED")) {
         throw new PegasusSparkException(
             String.format(
-                "bulkload[%s.%s] failed. message = %s",
-                cluster, table, queryResponse.hint_message));
+                "bulkload[%s.%s] failed. message = %s", cluster, table, queryResponse.hint_msg));
       }
 
       if (queryResponse.app_status.contains("BLS_SUCCEED")) {
@@ -286,8 +308,12 @@ public class Cluster {
             String.format(
                 "bulkload[%s.%s] is completed, process %s",
                 cluster, table, queryResponse.app_status));
+        if (!enableCompaction) {
+          LOG.warn(
+              "disable compaction after this data load completed, please make sure compaction will be executed in later!");
+          return;
+        }
         startManualCompaction(cluster, table);
-        setNormalMod(cluster, table);
         return;
       }
 
@@ -299,17 +325,21 @@ public class Cluster {
     }
 
     if (queryResponse.err.Errno.equals("ERR_INVALID_STATE")
-        && queryResponse.hint_message.contains(" is not during bulk load")) {
+        && queryResponse.hint_msg.contains(" is not during bulk load")) {
       LOG.info(
           String.format(
-              "bulkload[%s.%s] may be completed. message = %s",
-              cluster, table, queryResponse.hint_message));
+              "%s : bulkload[%s.%s] may be completed. message = %s",
+              queryResponse.err.Errno, cluster, table, queryResponse.hint_msg));
+      if (!enableCompaction) {
+        LOG.warn(
+            "disable compaction after this data load completed, please make sure compaction will be executed in later!");
+        return;
+      }
       startManualCompaction(cluster, table);
-      setNormalMod(cluster, table);
     }
   }
 
-  public static BulkLoadInfo.ExecuteResponse sendBulkLoadRequest(
+  private static BulkLoadInfo.ExecuteResponse sendBulkLoadRequest(
       String cluster, String table, String remoteFileSystem, String remotePath)
       throws PegasusSparkException {
     String path = String.format("%s/v1/bulkloadManager/start", metaGateWay);
@@ -321,18 +351,17 @@ public class Cluster {
     executeRequest.RemotePath = remotePath;
     HttpResponse httpResponse = HttpClient.post(path, JsonParser.getGson().toJson(executeRequest));
 
-    int code = httpResponse.getStatusLine().getStatusCode();
-    String error = httpResponse.getStatusLine().getReasonPhrase();
-    if (code != 200) {
-      throw new PegasusSparkException(
-          String.format(
-              "start bulkload[%s(%s)] via gateway[%s] failed, ErrCode = %d, error = %s",
-              cluster, table, path, code, error));
-    }
     BulkLoadInfo.ExecuteResponse bulkloadExecuteResponse;
     String respString = "";
     try {
+      int code = httpResponse.getStatusLine().getStatusCode();
       respString = EntityUtils.toString(httpResponse.getEntity(), "UTF-8");
+      if (code != 200) {
+        throw new PegasusSparkException(
+            String.format(
+                "start bulkload[%s(%s)] via gateway[%s] failed, ErrCode = %d, error = %s",
+                cluster, table, path, code, respString));
+      }
       bulkloadExecuteResponse =
           JsonParser.getGson().fromJson(respString, BulkLoadInfo.ExecuteResponse.class);
     } catch (IOException e) {
@@ -346,25 +375,23 @@ public class Cluster {
     return bulkloadExecuteResponse;
   }
 
-  public static BulkLoadInfo.QueryResponse queryBulkLoadResult(String cluster, String table)
+  private static BulkLoadInfo.QueryResponse queryBulkLoadResult(String cluster, String table)
       throws PegasusSparkException {
     String path = String.format("%s/v1/bulkloadManager/%s/%s", metaGateWay, cluster, table);
     Map<String, String> params = new HashMap<>();
     HttpResponse httpResponse = HttpClient.get(path, params);
 
-    int code = httpResponse.getStatusLine().getStatusCode();
-    String error = httpResponse.getStatusLine().getReasonPhrase();
-    if (code != 200) {
-      throw new PegasusSparkException(
-          String.format(
-              "query bulkload[%s(%s)] via gateway[%s] failed, ErrCode = %d, error = %s",
-              cluster, table, path, code, error));
-    }
-
     BulkLoadInfo.QueryResponse queryResponse;
     String respString = "";
     try {
+      int code = httpResponse.getStatusLine().getStatusCode();
       respString = EntityUtils.toString(httpResponse.getEntity(), "UTF-8");
+      if (code != 200) {
+        throw new PegasusSparkException(
+            String.format(
+                "query bulkload[%s(%s)] via gateway[%s] failed, ErrCode = %d, error = %s",
+                cluster, table, path, code, respString));
+      }
       queryResponse = JsonParser.getGson().fromJson(respString, BulkLoadInfo.QueryResponse.class);
     } catch (IOException e) {
       throw new PegasusSparkException(
@@ -375,7 +402,7 @@ public class Cluster {
         BulkLoadInfo.QueryResponse response = new BulkLoadInfo.QueryResponse();
         response.err = new BulkLoadInfo.Error("ERR_OK");
         response.app_status = "BLS_INVALID";
-        response.hint_message = e.getMessage();
+        response.hint_msg = e.getMessage();
         return response;
       } else {
         throw new PegasusSparkException(
@@ -395,19 +422,17 @@ public class Cluster {
     cancelRequest.TableName = table;
     HttpResponse httpResponse = HttpClient.post(path, JsonParser.getGson().toJson(cancelRequest));
 
-    int code = httpResponse.getStatusLine().getStatusCode();
-    String error = httpResponse.getStatusLine().getReasonPhrase();
-    if (code != 200) {
-      throw new PegasusSparkException(
-          String.format(
-              "cancel bulkload[%s(%s)] via gateway[%s] failed, ErrCode = %d, err = %s",
-              cluster, table, path, code, error));
-    }
-
     BulkLoadInfo.CancelResponse cancelResponse;
     String respString = "";
     try {
+      int code = httpResponse.getStatusLine().getStatusCode();
       respString = EntityUtils.toString(httpResponse.getEntity(), "UTF-8");
+      if (code != 200) {
+        throw new PegasusSparkException(
+            String.format(
+                "cancel bulkload[%s(%s)] via gateway[%s] failed, ErrCode = %d, err = %s",
+                cluster, table, path, code, respString));
+      }
       cancelResponse = JsonParser.getGson().fromJson(respString, BulkLoadInfo.CancelResponse.class);
     } catch (IOException e) {
       throw new PegasusSparkException(
@@ -425,39 +450,27 @@ public class Cluster {
     sendCompactionRequest(cluster, table);
     LOG.info(String.format("start compact %s.%s", cluster, table));
     Thread.sleep(60000); // wait to the perf is updated
-    Map<String, Double> result = queryCompactionResult(cluster, table);
-    while (true) {
-      boolean running = false;
-      for (Double value : result.values()) {
-        if (value > 0) {
-          running = true;
-          break;
-        }
-      }
-      if (running) {
-        Thread.sleep(30000);
-        result = queryCompactionResult(cluster, table);
-        LOG.warn(String.format("%s.%s compaction is running", cluster, table));
-      } else {
-        LOG.warn(String.format("%s.%s compaction is completed", cluster, table));
-        return;
-      }
+    while (!queryCompactionIfCompleted(cluster, table)) {
+      LOG.warn(String.format("%s.%s compaction is running", cluster, table));
+      Thread.sleep(30000);
     }
+    LOG.warn(String.format("%s.%s compaction is completed, set env as normal mod", cluster, table));
+    setNormalMod(cluster, table);
   }
 
-  public static void setBulkLoadMod(String cluster, String table) throws PegasusSparkException {
+  private static void setBulkLoadMod(String cluster, String table) throws PegasusSparkException {
     Map<String, String> envs = new HashMap<>();
     envs.put("rocksdb.usage_scenario", "bulk_load");
     setTableEnv(cluster, table, envs);
   }
 
-  public static void setNormalMod(String cluster, String table) throws PegasusSparkException {
+  private static void setNormalMod(String cluster, String table) throws PegasusSparkException {
     Map<String, String> envs = new HashMap<>();
     envs.put("rocksdb.usage_scenario", "normal");
     setTableEnv(cluster, table, envs);
   }
 
-  public static void sendCompactionRequest(String cluster, String table)
+  private static void sendCompactionRequest(String cluster, String table)
       throws PegasusSparkException {
     Map<String, String> envs = new HashMap<>();
     envs.put("manual_compact.max_concurrent_running_count", "1");
@@ -468,7 +481,18 @@ public class Cluster {
     setTableEnv(cluster, table, envs);
   }
 
-  public static Map<String, Double> queryCompactionResult(String cluster, String table)
+  private static boolean queryCompactionIfCompleted(String cluster, String table)
+      throws PegasusSparkException, InterruptedException {
+    Map<String, Double> result = queryCompactionResult(cluster, table);
+    for (Double value : result.values()) {
+      if (value > 0) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private static Map<String, Double> queryCompactionResult(String cluster, String table)
       throws PegasusSparkException, InterruptedException {
     String counterName = "replica*app.pegasus*manual.compact.running.count";
     return queryPerfCounter(cluster, table, counterName);
@@ -480,18 +504,16 @@ public class Cluster {
     String envStr = JsonParser.getGson().toJson(envs);
     LOG.info(String.format("%s.%s update envs to %s", cluster, table, envStr));
     HttpResponse httpResponse = HttpClient.post(path, envStr);
-    int code = httpResponse.getStatusLine().getStatusCode();
-    String error = httpResponse.getStatusLine().getReasonPhrase();
-    if (code != 200) {
-      throw new PegasusSparkException(
-          String.format(
-              "set envs[%s(%s)]=>%s via gateway[%s] failed, ErrCode = %d, err = %s",
-              cluster, table, envStr, path, code, error));
-    }
-
     String respString = "";
     try {
+      int code = httpResponse.getStatusLine().getStatusCode();
       respString = EntityUtils.toString(httpResponse.getEntity(), "UTF-8");
+      if (code != 200) {
+        throw new PegasusSparkException(
+            String.format(
+                "set envs[%s(%s)]=>%s via gateway[%s] failed, ErrCode = %d, err = %s",
+                cluster, table, envStr, path, code, respString));
+      }
     } catch (IOException e) {
       throw new PegasusSparkException(
           String.format("format the response to string failed: %s", e.getMessage()));
@@ -506,19 +528,18 @@ public class Cluster {
       String cluster, String table, String counterName) throws PegasusSparkException {
     String path = String.format("%s/v1/tableManager/%s/perf", metaGateWay, cluster);
     HttpResponse httpResponse = HttpClient.get(path, new HashMap<>());
-    int code = httpResponse.getStatusLine().getStatusCode();
-    String error = httpResponse.getStatusLine().getReasonPhrase();
-    if (code != 200) {
-      throw new PegasusSparkException(
-          String.format(
-              "get perf[%s] via gateway[%s] failed, ErrCode = %d, err = %s",
-              cluster, path, code, error));
-    }
 
     String respString = "";
     Map<String, Double> results = new HashMap<>();
     try {
+      int code = httpResponse.getStatusLine().getStatusCode();
       respString = EntityUtils.toString(httpResponse.getEntity(), "UTF-8");
+      if (code != 200) {
+        throw new PegasusSparkException(
+            String.format(
+                "get perf[%s] via gateway[%s] failed, ErrCode = %d, err = %s",
+                cluster, path, code, respString));
+      }
       // addr=>{addr=>{counter=>value}}
       Map<String, Map<String, Map<String, Double>>> stats =
           JsonParser.getGson().fromJson(respString, Map.class);
