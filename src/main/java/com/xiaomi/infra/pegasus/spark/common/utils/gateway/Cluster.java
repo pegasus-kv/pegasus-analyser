@@ -556,7 +556,7 @@ public class Cluster {
       throw new PegasusSparkException(
           String.format(
               "parser the response to queryResponse failed: %s\n%s",
-              e.getMessage(), respString.substring(0, 100)));
+              e.getMessage(), respString.length() < 100 ? respString : respString.substring(0, 100)));
     }
     return results;
   }
