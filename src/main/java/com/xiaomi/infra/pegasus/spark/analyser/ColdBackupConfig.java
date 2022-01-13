@@ -29,6 +29,7 @@ public class ColdBackupConfig extends CommonConfig implements Config {
   private int fileOpenCount;
   private String coldBackupTime;
   private DataVersion dataVersion;
+  private boolean filterExpired;
 
   public ColdBackupConfig(HDFSConfig hdfsConfig, String clusterName, String tableName) {
     super(hdfsConfig, clusterName, tableName);
@@ -41,6 +42,7 @@ public class ColdBackupConfig extends CommonConfig implements Config {
   }
 
   private void initConfig() {
+    filterExpired = true;
     setReadOptions(DEFAULT_FILE_OPEN_COUNT, DEFAULT_READ_AHEAD_SIZE_MB);
   }
 
@@ -136,6 +138,15 @@ public class ColdBackupConfig extends CommonConfig implements Config {
   @Override
   public ColdBackupConfig setRateLimiterConfig(RateLimiterConfig rateLimiterConfig) {
     super.setRateLimiterConfig(rateLimiterConfig);
+    return this;
+  }
+
+  public boolean isFilterExpired() {
+    return filterExpired;
+  }
+
+  public ColdBackupConfig enableFilterExpired(boolean filterExpired) {
+    this.filterExpired = filterExpired;
     return this;
   }
 

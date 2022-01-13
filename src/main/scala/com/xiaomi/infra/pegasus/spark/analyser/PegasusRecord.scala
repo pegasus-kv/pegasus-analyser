@@ -1,6 +1,7 @@
 package com.xiaomi.infra.pegasus.spark.analyser
 
 import com.xiaomi.infra.pegasus.spark.common.PegasusSparkException
+import com.xiaomi.infra.pegasus.tools.Tools
 
 import java.nio.ByteBuffer
 import java.util
@@ -179,5 +180,9 @@ case class PegasusRecord(
       .append(expireTs)
       .append(timestamp)
       .hashCode()
+  }
+
+  def isExpired: Boolean = {
+    this.expireTs != 0 && this.expireTs - Tools.epoch_now().intValue() <= 0
   }
 }
