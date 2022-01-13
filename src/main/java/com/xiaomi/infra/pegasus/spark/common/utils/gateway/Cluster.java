@@ -5,10 +5,7 @@ import com.xiaomi.infra.pegasus.spark.common.PegasusSparkException;
 import com.xiaomi.infra.pegasus.spark.common.utils.JsonParser;
 import java.io.IOException;
 import java.lang.reflect.Type;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -556,7 +553,8 @@ public class Cluster {
       throw new PegasusSparkException(
           String.format(
               "parser the response to queryResponse failed: %s\n%s",
-              e.getMessage(), respString.length() < 100 ? respString : respString.substring(0, 100)));
+              e.getMessage(),
+              respString.length() < 100 ? respString : respString.substring(0, 100)));
     }
     return results;
   }
