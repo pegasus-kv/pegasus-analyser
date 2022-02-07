@@ -20,7 +20,14 @@ private[analyser] class PartitionIterator private (
   private var filterExpiredRecord: Boolean = _
 
   private var closed = false
-  private var nextRecord = PegasusRecord(null, null, null, 0, 0)// the init value will be update by `next` and not be used
+  private var nextRecord =
+    PegasusRecord(
+      null,
+      null,
+      null,
+      0,
+      0
+    ) // the init value will be update by `next` and not be used
 
   private var name: String = _
 

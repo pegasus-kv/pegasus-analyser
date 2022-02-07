@@ -257,6 +257,13 @@ public class Cluster {
       throw new PegasusSparkException("the last bulkload is " + queryResponse.app_status);
     }
 
+    if (queryResponse.app_status.contains("BLS_FAILED")) {
+      throw new PegasusSparkException(
+          String.format(
+              "the last bulkload is %s,%s: %s",
+              queryResponse.app_status, queryResponse.err.Errno, queryResponse.hint_msg));
+    }
+
     BulkLoadInfo.ExecuteResponse executeResponse =
         sendBulkLoadRequest(cluster, table, remoteFileSystem, remotePath);
     while (!executeResponse.err.Errno.equals("ERR_OK")) {
@@ -294,7 +301,7 @@ public class Cluster {
             String.format("%s.%s bulkload is %s", cluster, table, queryResponse.app_status));
       }
 
-      if (queryResponse.app_status.equals("BLS_FAILED")) {
+      if (queryResponse.app_status.contains("BLS_FAILED")) {
         throw new PegasusSparkException(
             String.format(
                 "bulkload[%s.%s] failed. message = %s", cluster, table, queryResponse.hint_msg));
@@ -321,19 +328,10 @@ public class Cluster {
       queryResponse = queryBulkLoadResult(cluster, table);
     }
 
-    if (queryResponse.err.Errno.equals("ERR_INVALID_STATE")
-        && queryResponse.hint_msg.contains(" is not during bulk load")) {
-      LOG.info(
-          String.format(
-              "%s : bulkload[%s.%s] may be completed. message = %s",
-              queryResponse.err.Errno, cluster, table, queryResponse.hint_msg));
-      if (!enableCompaction) {
-        LOG.warn(
-            "disable compaction after this data load completed, please make sure compaction will be executed in later!");
-        return;
-      }
-      startManualCompaction(cluster, table);
-    }
+    throw new PegasusSparkException(
+        String.format(
+            "bulkload[%s.%s] failed. err = %s,  message = %s",
+            cluster, table, queryResponse.err.Errno, queryResponse.hint_msg));
   }
 
   private static BulkLoadInfo.ExecuteResponse sendBulkLoadRequest(
