@@ -264,6 +264,12 @@ public class Cluster {
               queryResponse.app_status, queryResponse.err.Errno, queryResponse.hint_msg));
     }
 
+    if (!queryCompactionIfCompleted(cluster)) {
+      throw new PegasusSparkException(
+          String.format(
+              "the current cluster[%s] is running compaction, not allow start bulkload", cluster));
+    }
+
     BulkLoadInfo.ExecuteResponse executeResponse =
         sendBulkLoadRequest(cluster, table, remoteFileSystem, remotePath);
     while (!executeResponse.err.Errno.equals("ERR_OK")) {
@@ -445,12 +451,19 @@ public class Cluster {
     sendCompactionRequest(cluster, table);
     LOG.info(String.format("start compact %s.%s", cluster, table));
     Thread.sleep(60000); // wait to the perf is updated
-    while (!queryCompactionIfCompleted(cluster, table)) {
+    while (!queryCompactionIfCompleted(cluster)) {
       LOG.warn(String.format("%s.%s compaction is running", cluster, table));
       Thread.sleep(30000);
     }
     LOG.warn(String.format("%s.%s compaction is completed, set env as normal mod", cluster, table));
     setNormalMod(cluster, table);
+  }
+
+  public static void startManualCompaction(String cluster, List<String> tables)
+      throws PegasusSparkException, InterruptedException {
+    for (String table : tables) {
+      startManualCompaction(cluster, table);
+    }
   }
 
   private static void setBulkLoadMod(String cluster, String table) throws PegasusSparkException {
@@ -476,9 +489,9 @@ public class Cluster {
     setTableEnv(cluster, table, envs);
   }
 
-  private static boolean queryCompactionIfCompleted(String cluster, String table)
+  private static boolean queryCompactionIfCompleted(String cluster)
       throws PegasusSparkException, InterruptedException {
-    Map<String, Double> result = queryCompactionResult(cluster, table);
+    Map<String, Double> result = queryCompactionResult(cluster);
     for (Double value : result.values()) {
       if (value > 0) {
         return false;
@@ -487,10 +500,10 @@ public class Cluster {
     return true;
   }
 
-  private static Map<String, Double> queryCompactionResult(String cluster, String table)
+  private static Map<String, Double> queryCompactionResult(String cluster)
       throws PegasusSparkException, InterruptedException {
     String counterName = "replica*app.pegasus*manual.compact.running.count";
-    return queryPerfCounter(cluster, table, counterName);
+    return queryPerfCounter(cluster, counterName);
   }
 
   private static void setTableEnv(String cluster, String table, Map<String, String> envs)
@@ -519,8 +532,8 @@ public class Cluster {
     }
   }
 
-  private static Map<String, Double> queryPerfCounter(
-      String cluster, String table, String counterName) throws PegasusSparkException {
+  private static Map<String, Double> queryPerfCounter(String cluster, String counterName)
+      throws PegasusSparkException {
     String path = String.format("%s/v1/tableManager/%s/perf", metaGateWay, cluster);
     HttpResponse httpResponse = HttpClient.get(path, new HashMap<>());
 
