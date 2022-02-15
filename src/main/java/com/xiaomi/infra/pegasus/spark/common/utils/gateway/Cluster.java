@@ -462,7 +462,18 @@ public class Cluster {
   public static void startManualCompaction(String cluster, List<String> tables)
       throws PegasusSparkException, InterruptedException {
     for (String table : tables) {
-      startManualCompaction(cluster, table);
+      sendCompactionRequest(cluster, table);
+      LOG.info(String.format("start compact %s.%s", cluster, table));
+      Thread.sleep(60000); // wait to the perf is updated
+    }
+    while (!queryCompactionIfCompleted(cluster)) {
+      LOG.warn(String.format("%s compaction is running", cluster));
+      Thread.sleep(30000);
+    }
+    for (String table : tables) {
+      LOG.warn(
+          String.format("%s.%s compaction is completed, set env as normal mod", cluster, table));
+      setNormalMod(cluster, table);
     }
   }
 
