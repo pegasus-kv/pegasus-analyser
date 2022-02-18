@@ -56,19 +56,17 @@ private[analyser] class PartitionIterator private (
   }
 
   override def hasNext: Boolean = {
-    nextRecord != null && !closed
-  }
-
-  override def next(): PegasusRecord = {
     updateNextRecord()
-
     if (filterExpiredRecord) {
-      while (nextRecord.isExpired) {
+      while (nextRecord != null && nextRecord.isExpired) {
         expiredCount += 1
         updateNextRecord()
       }
     }
+    nextRecord != null && !closed
+  }
 
+  override def next(): PegasusRecord = {
     nextRecord
   }
 
