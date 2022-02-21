@@ -8,9 +8,13 @@ import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.rocksdb.RocksDB;
 
 public class JNILibraryLoader {
+  private static final Log LOG = LogFactory.getLog(JNILibraryLoader.class);
+
   static class JNILibraries {
     List<String> libraries = new ArrayList<>();
 
@@ -81,22 +85,25 @@ public class JNILibraryLoader {
             InputStream in = JNILibraryLoader.class.getResourceAsStream(libraryPath);
             Files.copy(in, temp.toPath(), StandardCopyOption.REPLACE_EXISTING);
           } catch (IOException e) {
-            temporaryDir.delete();
+            temp.delete();
             throw new PegasusSparkException(
                 libraryPath + " copy to " + temp.toPath().toString() + " error!", e);
           }
-          System.load(temp.getAbsolutePath());
         }
       }
     }
+    System.load(temp.getAbsolutePath());
   }
 
   private static File generateTempFile() throws PegasusSparkException {
-    String tempDir = System.getProperty("java.io.tmpdir");
-    File generatedDir = new File(tempDir, "pegasus-spark" + System.nanoTime());
+    File generatedDir = new File("/tmp", "pegasus-spark");
+    if (generatedDir.exists()) {
+      LOG.warn(String.format("%s has been existed", generatedDir.getPath()));
+      return generatedDir;
+    }
 
     if (!generatedDir.mkdir())
-      throw new PegasusSparkException("Failed to create temp directory " + generatedDir.getName());
+      throw new PegasusSparkException("Failed to create temp directory " + generatedDir.getPath());
     return generatedDir;
   }
 }
