@@ -173,7 +173,7 @@ public class Cluster {
   private static BackupInfo.ExecuteResponse sendBackupRequest(
       String cluster, String table, String remoteFileSystem, String remotePath)
       throws PegasusSparkException {
-    String path = String.format("%s/v1/backupManager/%s/backup", metaGateWay, "c4tst-function1");
+    String path = String.format("%s/v1/backupManager/%s/backup", metaGateWay, cluster);
 
     BackupInfo.ExecuteRequest executeRequest = new BackupInfo.ExecuteRequest();
     executeRequest.TableName = table;
