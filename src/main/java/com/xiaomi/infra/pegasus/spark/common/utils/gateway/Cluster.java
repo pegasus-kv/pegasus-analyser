@@ -111,7 +111,8 @@ public class Cluster {
               tableInfo.general.app_name));
     }
 
-    if (replicaCount.get() != tableInfo.replicas.size() * 3) {
+    if (replicaCount.get()
+        != tableInfo.replicas.size() * Integer.parseInt(tableInfo.general.max_replica_count)) {
       throw new PegasusSparkException(
           String.format(
               "table[%s] has not enough replica(expect=%d, actual=%d), not allow to use bulkload!",
