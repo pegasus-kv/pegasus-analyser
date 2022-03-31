@@ -7,6 +7,7 @@ cd "${PROJECT_DIR}" || exit 1
 SRC_FILES=(src/main/java/com/xiaomi/infra/pegasus/spark/common/*.java
            src/main/java/com/xiaomi/infra/pegasus/spark/common/utils/*.java
            src/main/java/com/xiaomi/infra/pegasus/spark/common/utils/gateway/*.java
+           src/main/java/com/xiaomi/infra/pegasus/spark/common/utils/metaproxy/*.java
            src/main/java/com/xiaomi/infra/pegasus/spark/analyser/*.java
            src/main/java/com/xiaomi/infra/pegasus/spark/bulkloader/*.java
            )

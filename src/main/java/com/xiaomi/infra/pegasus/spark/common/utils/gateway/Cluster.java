@@ -2,7 +2,9 @@ package com.xiaomi.infra.pegasus.spark.common.utils.gateway;
 
 import com.google.gson.reflect.TypeToken;
 import com.xiaomi.infra.pegasus.spark.common.PegasusSparkException;
+import com.xiaomi.infra.pegasus.spark.common.utils.HttpClient;
 import com.xiaomi.infra.pegasus.spark.common.utils.JsonParser;
+import com.xiaomi.infra.pegasus.spark.common.utils.metaproxy.ClusterStateInfo;
 import java.io.IOException;
 import java.lang.reflect.Type;
 import java.util.*;
@@ -18,6 +20,34 @@ public class Cluster {
   private static final Log LOG = LogFactory.getLog(Cluster.class);
 
   public static String metaGateWay = "http://pegasus-gateway.hadoop.srv/";
+
+  public static ClusterStateInfo getMetaList(String cluster) throws PegasusSparkException {
+    String path = String.format("%s/v1/%s/meta/cluster", metaGateWay, cluster);
+
+    ClusterStateInfo clusterStateInfo;
+    String respString = "";
+    HttpResponse httpResponse = HttpClient.get(path, new HashMap<>());
+    try {
+      int code = httpResponse.getStatusLine().getStatusCode();
+      respString = EntityUtils.toString(httpResponse.getEntity(), "UTF-8");
+      if (code != 200) {
+        throw new PegasusSparkException(
+            String.format(
+                "get meta[%s] list from gateway failed, ErrCode = %d, err = %s",
+                cluster, code, respString));
+      }
+      clusterStateInfo = JsonParser.getGson().fromJson(respString, ClusterStateInfo.class);
+    } catch (IOException e) {
+      throw new PegasusSparkException(
+          String.format("format the response to tableInfo failed: %s", e.getMessage()));
+    } catch (RuntimeException e) {
+      throw new PegasusSparkException(
+          String.format(
+              "parser the response to tableInfo failed: %s\n%s", e.getMessage(), respString));
+    }
+
+    return clusterStateInfo;
+  }
 
   public static TableInfo getTableInfo(String cluster, String table) throws PegasusSparkException {
     String path = String.format(metaGateWay + "/%s/meta/app", cluster);
