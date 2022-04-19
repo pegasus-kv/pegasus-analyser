@@ -86,7 +86,7 @@
     <dependency>
       <groupId>org.rocksdb</groupId>
       <artifactId>rocksdbjni</artifactId>
-      <version>6.6.4-mdh6.6.5-hdfs</version>
+      <version>6.6.4-SNAPSHOT</version>
     </dependency>
 
     <!--Pegasus: The version add `Serializable` for some class, it will be replaced by release version-->
@@ -112,33 +112,39 @@
       <groupId>org.apache.hadoop</groupId>
       <artifactId>hadoop-hdfs</artifactId>
       <version>3.1.0-mdh3.1.1.9</version>
+      <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.hadoop</groupId>
       <artifactId>hadoop-hdfs-client</artifactId>
       <version>3.1.0-mdh3.1.1.9</version>
+      <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.hadoop</groupId>
       <artifactId>hadoop-common</artifactId>
       <version>3.1.0-mdh3.1.1.9</version>
+      <scope>provided</scope>
     </dependency>
     <!--Scala-->
     <dependency>
       <groupId>org.scala-lang</groupId>
       <artifactId>scala-library</artifactId>
       <version>2.12.10</version>
+      <scope>provided</scope>
     </dependency>
     <!--Spark-->
     <dependency>
       <groupId>org.apache.spark</groupId>
       <artifactId>spark-core_2.12</artifactId>
       <version>3.1.2</version>
+      <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.spark</groupId>
       <artifactId>spark-sql_2.12</artifactId>
       <version>3.1.2</version>
+      <scope>provided</scope>
     </dependency>
 </dependencies>
 
