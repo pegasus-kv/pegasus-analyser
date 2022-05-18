@@ -42,7 +42,22 @@ class PegasusRecordRDD(data: RDD[(PegasusKey, PegasusValue)]) {
       new BulkLoader(config, i.asJava, TaskContext.getPartitionId()).start()
     })
 
-    checkPartitionFolderValid(config)
+    if (config.isEnableValidateAfterGenerate) {
+      checkPartitionFolderValid(config)
+
+      rdd.foreachPartition(i => {
+        new BulkLoader(config, i.asJava, TaskContext.getPartitionId())
+          .validateGenerateFiles()
+      })
+    }
+
+    val tablePath =
+      config.getRemoteFileSystemURL + "/" + config.getRemoteFileSystemPath +
+        "/" + config.getClusterName + "/" + config.getTableName
+
+    LOG.info(
+      config.getClusterName + "." + config.getTableName + " data has generated on " + tablePath
+    )
   }
 
   // not allow generate data in same path which usually has origin data
@@ -79,6 +94,11 @@ class PegasusRecordRDD(data: RDD[(PegasusKey, PegasusValue)]) {
     if (fileCount != config.getTablePartitionCount + 1) {
       throw new PegasusSparkException(
         "the data[" + tablePath + "] is not completed, partition_count expect vs actual = " + config.getTablePartitionCount + ":"
+          + (fileCount - 1)
+      )
+    } else {
+      LOG.info(
+        "validate the data[" + tablePath + "] folder completed, partition_count expect vs actual = " + config.getTablePartitionCount + ":"
           + (fileCount - 1)
       )
     }
