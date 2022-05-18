@@ -96,7 +96,7 @@ public class JNILibraryLoader {
   }
 
   private static File generateTempFile() throws PegasusSparkException {
-    File generatedDir = new File("/tmp", "pegasus-spark");
+    File generatedDir = new File(System.getProperty("user.dir"));
     if (generatedDir.exists()) {
       LOG.warn(String.format("%s has been existed", generatedDir.getPath()));
       return generatedDir;
