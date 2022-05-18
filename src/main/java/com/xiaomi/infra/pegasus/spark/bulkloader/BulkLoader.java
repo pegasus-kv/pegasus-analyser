@@ -91,9 +91,6 @@ class BulkLoader {
       createBulkLoadInfoFile();
       createSstFile();
       AutoRetryer.getDefaultRetryer().call(this::createBulkLoadMetaDataFile);
-      if (config.isEnableValidateAfterGenerate()) {
-        validateGenerateFiles();
-      }
     } catch (Exception e) {
       throw new PegasusSparkException(
           "generated bulkloader data failed, please check and retry!", e);
@@ -101,6 +98,11 @@ class BulkLoader {
   }
 
   public void validateGenerateFiles() throws PegasusSparkException {
+    if (!remoteFileSystem.exist(bulkLoadMetaDataPath)) {
+      throw new PegasusSparkException(
+          "validate generated files failed: can't find " + bulkLoadMetaDataPath);
+    }
+
     try (BufferedReader bufferedReader = remoteFileSystem.getReader(bulkLoadMetaDataPath)) {
       DataMetaInfo dataMetaInfo = JsonParser.getGson().fromJson(bufferedReader, DataMetaInfo.class);
       for (FileInfo fileInfo : dataMetaInfo.files) {
@@ -234,7 +236,5 @@ class BulkLoader {
     dataMetaInfo.files.add(fileInfo);
 
     totalSize.addAndGet(fileSize);
-
-    LOG.info(fileName + " meta info generates complete!");
   }
 }

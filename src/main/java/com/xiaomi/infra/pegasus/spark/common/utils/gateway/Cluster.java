@@ -268,7 +268,7 @@ public class Cluster {
   public static void startBulkLoad(
       String cluster, String table, String remoteFileSystem, String remotePath)
       throws PegasusSparkException, InterruptedException {
-    startBulkLoad(cluster, table, remoteFileSystem, remotePath, true);
+    startBulkLoad(cluster, table, remoteFileSystem, remotePath, new Compaction("03:00", 1, true));
   }
 
   public static void startBulkLoad(
@@ -276,13 +276,13 @@ public class Cluster {
       String table,
       String remoteFileSystem,
       String remotePath,
-      boolean enableCompaction)
+      Compaction compaction)
       throws InterruptedException, PegasusSparkException {
     LOG.info(
         String.format(
             "start import hdfs %s/%s to pegasus %s.%s",
             remoteFileSystem, remotePath, cluster, table));
-    setBulkLoadMod(cluster, table);
+
     BulkLoadInfo.QueryResponse queryResponse = queryBulkLoadResult(cluster, table);
     if (queryResponse.app_status.contains("BLS_CANCEL")) {
       throw new PegasusSparkException("the last bulkload is " + queryResponse.app_status);
@@ -323,52 +323,56 @@ public class Cluster {
       throw new PegasusSparkException(executeResponse.err.Errno + " : " + executeResponse.hint_msg);
     }
 
-    Thread.sleep(10000);
-    queryResponse = queryBulkLoadResult(cluster, table);
-    if (!queryResponse.app_status.equals("BLS_DOWNLOADING")) {
-      LOG.warn(
-          queryResponse.err.Errno
-              + " : the first stage should be BLS_DOWNLOADING, but now is "
-              + queryResponse.app_status);
-    }
-
-    while (queryResponse.err.Errno.equals("ERR_OK")) {
-      if (queryResponse.app_status.contains("BLS_CANCEL")) {
-        throw new PegasusSparkException(
-            String.format("%s.%s bulkload is %s", cluster, table, queryResponse.app_status));
+    try {
+      Thread.sleep(10000);
+      setBulkLoadMod(cluster, table);
+      queryResponse = queryBulkLoadResult(cluster, table);
+      if (!queryResponse.app_status.equals("BLS_DOWNLOADING")) {
+        LOG.warn(
+            queryResponse.err.Errno
+                + " : the first stage should be BLS_DOWNLOADING, but now is "
+                + queryResponse.app_status);
       }
 
-      if (queryResponse.app_status.contains("BLS_FAILED")) {
-        throw new PegasusSparkException(
-            String.format(
-                "bulkload[%s.%s] failed. message = %s", cluster, table, queryResponse.hint_msg));
-      }
+      while (queryResponse.err.Errno.equals("ERR_OK")) {
+        if (queryResponse.app_status.contains("BLS_CANCEL")) {
+          throw new PegasusSparkException(
+              String.format("%s.%s bulkload is %s", cluster, table, queryResponse.app_status));
+        }
 
-      if (queryResponse.app_status.contains("BLS_SUCCEED")) {
-        LOG.info(
-            String.format(
-                "bulkload[%s.%s] is completed, process %s",
-                cluster, table, queryResponse.app_status));
-        if (!enableCompaction) {
-          LOG.warn(
-              "disable compaction after this data load completed, please make sure compaction will be executed in later!");
+        if (queryResponse.app_status.contains("BLS_FAILED")) {
+          throw new PegasusSparkException(
+              String.format(
+                  "bulkload[%s.%s] failed. message = %s", cluster, table, queryResponse.hint_msg));
+        }
+
+        if (queryResponse.app_status.contains("BLS_SUCCEED")) {
+          LOG.info(
+              String.format(
+                  "bulkload[%s.%s] is completed, process %s",
+                  cluster, table, queryResponse.app_status));
+          createManualCompaction(cluster, table, compaction);
           return;
         }
-        startManualCompaction(cluster, table);
-        return;
+
+        LOG.info(
+            String.format(
+                "bulkload[%s.%s] is running, process %s",
+                cluster, table, queryResponse.app_status));
+        Thread.sleep(10000);
+        queryResponse = queryBulkLoadResult(cluster, table);
       }
 
-      LOG.info(
+      throw new PegasusSparkException(
           String.format(
-              "bulkload[%s.%s] is running, process %s", cluster, table, queryResponse.app_status));
-      Thread.sleep(10000);
-      queryResponse = queryBulkLoadResult(cluster, table);
+              "bulkload[%s.%s] failed. err = %s,  message = %s",
+              cluster, table, queryResponse.err.Errno, queryResponse.hint_msg));
+    } catch (PegasusSparkException e) {
+      LOG.error(
+          "bulkload failed and force create periodic manual compaction: " + compaction.toString());
+      createManualCompaction(cluster, table, new Compaction("00:05", 1, false));
+      throw new PegasusSparkException("bulkload failed: " + e.getMessage());
     }
-
-    throw new PegasusSparkException(
-        String.format(
-            "bulkload[%s.%s] failed. err = %s,  message = %s",
-            cluster, table, queryResponse.err.Errno, queryResponse.hint_msg));
   }
 
   private static BulkLoadInfo.ExecuteResponse sendBulkLoadRequest(
@@ -477,10 +481,19 @@ public class Cluster {
     return cancelResponse;
   }
 
-  public static void startManualCompaction(String cluster, String table)
+  public static void createManualCompaction(String cluster, String table, Compaction compaction)
       throws PegasusSparkException, InterruptedException {
-    sendCompactionRequest(cluster, table);
-    LOG.info(String.format("start compact %s.%s", cluster, table));
+    sendCompactionRequest(cluster, table, compaction);
+    if (!compaction.triggerAfterLoaded) {
+      LOG.warn(
+          "disable compaction after this data load completed, it will be triggered at "
+              + compaction.periodicTriggerTime);
+      return;
+    }
+    LOG.info(
+        String.format(
+            "start compact %s.%s and it will be trigger at %s",
+            cluster, table, compaction.periodicTriggerTime));
     Thread.sleep(60000); // wait to the perf is updated
     while (!queryCompactionIfCompleted(cluster)) {
       LOG.warn(String.format("%s.%s compaction is running", cluster, table));
@@ -490,13 +503,28 @@ public class Cluster {
     setNormalMod(cluster, table);
   }
 
-  public static void startManualCompaction(String cluster, List<String> tables)
+  public static void createManualCompaction(
+      String cluster, List<String> tables, Compaction compaction)
       throws PegasusSparkException, InterruptedException {
     for (String table : tables) {
-      sendCompactionRequest(cluster, table);
-      LOG.info(String.format("start compact %s.%s", cluster, table));
-      Thread.sleep(60000); // wait to the perf is updated
+      sendCompactionRequest(cluster, table, compaction);
+      if (!compaction.triggerAfterLoaded) {
+        LOG.warn(
+            "disable compaction after this data load completed, it will be triggered at "
+                + compaction.periodicTriggerTime);
+      } else {
+        LOG.info(
+            String.format(
+                "start compact %s.%s and it will be trigger at %s",
+                cluster, table, compaction.periodicTriggerTime));
+      }
     }
+
+    if (!compaction.triggerAfterLoaded) {
+      return;
+    }
+
+    Thread.sleep(60000); // wait to the perf is updated
     while (!queryCompactionIfCompleted(cluster)) {
       LOG.warn(String.format("%s compaction is running", cluster));
       Thread.sleep(30000);
@@ -505,6 +533,22 @@ public class Cluster {
       LOG.warn(
           String.format("%s.%s compaction is completed, set env as normal mod", cluster, table));
       setNormalMod(cluster, table);
+    }
+  }
+
+  public static void disableManualCompaction(String cluster, String table)
+      throws PegasusSparkException {
+    Map<String, String> envs = new HashMap<>();
+    envs.put("manual_compact.disabled", "true");
+    setTableEnv(cluster, table, envs);
+  }
+
+  public static void disableManualCompaction(String cluster, List<String> tables)
+      throws PegasusSparkException {
+    Map<String, String> envs = new HashMap<>();
+    envs.put("manual_compact.disabled", "true");
+    for (String tb : tables) {
+      setTableEnv(cluster, tb, envs);
     }
   }
 
@@ -520,14 +564,21 @@ public class Cluster {
     setTableEnv(cluster, table, envs);
   }
 
-  private static void sendCompactionRequest(String cluster, String table)
+  private static void sendCompactionRequest(String cluster, String table, Compaction compaction)
       throws PegasusSparkException {
     Map<String, String> envs = new HashMap<>();
-    envs.put("manual_compact.max_concurrent_running_count", "1");
-    envs.put("manual_compact.once.bottommost_level_compaction", "skip");
-    envs.put("manual_compact.once.target_level", "-1");
-    envs.put(
-        "manual_compact.once.trigger_time", String.valueOf(System.currentTimeMillis() / 1000 + 10));
+    envs.put("manual_compact.max_concurrent_running_count", compaction.concurrent);
+    envs.put("manual_compact.disabled", "false");
+    if (compaction.triggerAfterLoaded) {
+      envs.put("manual_compact.once.bottommost_level_compaction", "skip");
+      envs.put("manual_compact.once.target_level", "-1");
+      envs.put(
+          "manual_compact.once.trigger_time",
+          String.valueOf(System.currentTimeMillis() / 1000 + 10));
+    }
+    envs.put("manual_compact.periodic.bottommost_level_compaction", "skip");
+    envs.put("manual_compact.periodic.target_level", "-1");
+    envs.put("manual_compact.periodic.trigger_time", compaction.periodicTriggerTime);
     setTableEnv(cluster, table, envs);
   }
 
