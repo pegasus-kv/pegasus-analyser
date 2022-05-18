@@ -148,7 +148,7 @@ class BulkLoader {
   // TODO(jiashuo): write data may should keep trying if failed, but not only finite times
   public void createSstFile() throws PegasusSparkException {
     if (!dataResourceIterator.hasNext()) {
-      return;
+      throw new PegasusSparkException("can't find any data in current partition! partition = " + this.partitionId);
     }
 
     if (remoteFileSystem.exist(partitionPath)) {
