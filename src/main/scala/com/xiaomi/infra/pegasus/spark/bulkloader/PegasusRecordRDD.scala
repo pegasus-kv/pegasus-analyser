@@ -46,6 +46,7 @@ class PegasusRecordRDD(data: RDD[(PegasusKey, PegasusValue)]) {
       checkPartitionFolderValid(config)
 
       rdd.foreachPartition(i => {
+        JNILibraryLoader.load()
         new BulkLoader(config, i.asJava, TaskContext.getPartitionId())
           .validateGenerateFiles()
       })
