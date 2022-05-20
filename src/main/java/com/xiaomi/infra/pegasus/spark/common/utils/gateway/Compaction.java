@@ -5,6 +5,21 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 public class Compaction {
+
+  public static class Error {
+    public String Errno;
+
+    public Error(String errno) {
+      Errno = errno;
+    }
+  }
+
+  public static class Response {
+    public Compaction.Error err;
+    public String hint_msg;
+    public int progress;
+  }
+
   private static final Log LOG = LogFactory.getLog(Compaction.class);
 
   public String periodicTriggerTime;

@@ -295,10 +295,12 @@ public class Cluster {
               queryResponse.app_status, queryResponse.err.Errno, queryResponse.hint_msg));
     }
 
-    if (!queryCompactionIfCompleted(cluster)) {
+    Compaction.Response resp = queryTableCompaction(cluster, table);
+    if (!resp.err.Errno.equals("ERR_INVALID_STATE") && resp.progress != 100) {
       throw new PegasusSparkException(
           String.format(
-              "the current cluster[%s] is running compaction, not allow start bulkload", cluster));
+              "the current table[%s.%s] is running compaction[err=%s, process=%d], not allow start bulkload",
+              cluster, table, resp.err.Errno, resp.progress));
     }
 
     BulkLoadInfo.ExecuteResponse executeResponse =
@@ -487,18 +489,16 @@ public class Cluster {
     if (!compaction.triggerAfterLoaded) {
       LOG.warn(
           "disable compaction after this data load completed, it will be triggered at "
-              + compaction.periodicTriggerTime);
+              + compaction.periodicTriggerTime
+              + " every day");
       return;
     }
     LOG.info(
         String.format(
-            "start compact %s.%s and it will be trigger at %s",
+            "start compact %s.%s and it will be trigger at %s every day",
             cluster, table, compaction.periodicTriggerTime));
     Thread.sleep(60000); // wait to the perf is updated
-    while (!queryCompactionIfCompleted(cluster)) {
-      LOG.warn(String.format("%s.%s compaction is running", cluster, table));
-      Thread.sleep(30000);
-    }
+    waitTableCompactionCompleted(cluster, table);
     LOG.warn(String.format("%s.%s compaction is completed, set env as normal mod", cluster, table));
     setNormalMod(cluster, table);
   }
@@ -525,11 +525,8 @@ public class Cluster {
     }
 
     Thread.sleep(60000); // wait to the perf is updated
-    while (!queryCompactionIfCompleted(cluster)) {
-      LOG.warn(String.format("%s compaction is running", cluster));
-      Thread.sleep(30000);
-    }
     for (String table : tables) {
+      waitTableCompactionCompleted(cluster, table);
       LOG.warn(
           String.format("%s.%s compaction is completed, set env as normal mod", cluster, table));
       setNormalMod(cluster, table);
@@ -580,6 +577,59 @@ public class Cluster {
     envs.put("manual_compact.periodic.target_level", "-1");
     envs.put("manual_compact.periodic.trigger_time", compaction.periodicTriggerTime);
     setTableEnv(cluster, table, envs);
+  }
+
+  private static void waitTableCompactionCompleted(String cluster, String table)
+      throws PegasusSparkException, InterruptedException {
+    while (true) {
+      Compaction.Response resp = queryTableCompaction(cluster, table);
+      if (resp.err.Errno.equals("ERR_INVALID_STATE")) {
+        LOG.info(String.format("%s.%s compaction is not running", cluster, table));
+        return;
+      } else if (!resp.err.Errno.equals("ERR_OK")) {
+        LOG.info(
+            String.format("%s.%s query compaction failed, err = %s", cluster, table, resp.err));
+      } else {
+        if (resp.progress == 100) {
+          LOG.info(String.format("%s.%s compaction is completed", cluster, table));
+          return;
+        } else {
+          LOG.info(
+              String.format(
+                  "%s.%s is running compaction, process = %d", cluster, table, resp.progress));
+        }
+      }
+      Thread.sleep(30000);
+    }
+  }
+
+  private static Compaction.Response queryTableCompaction(String cluster, String table)
+      throws PegasusSparkException {
+    String path = String.format("%s/v1/manualCompaction/%s/%s", metaGateWay, cluster, table);
+    Map<String, String> params = new HashMap<>();
+    HttpResponse httpResponse = HttpClient.get(path, params);
+
+    Compaction.Response queryResponse;
+    String respString = "";
+    try {
+      int code = httpResponse.getStatusLine().getStatusCode();
+      respString = EntityUtils.toString(httpResponse.getEntity(), "UTF-8");
+      if (code != 200) {
+        throw new PegasusSparkException(
+            String.format(
+                "query compaction[%s(%s)] via gateway[%s] failed, ErrCode = %d, error = %s",
+                cluster, table, path, code, respString));
+      }
+      queryResponse = JsonParser.getGson().fromJson(respString, Compaction.Response.class);
+    } catch (IOException e) {
+      throw new PegasusSparkException(
+          String.format("format the response to string failed: %s", e.getMessage()));
+    } catch (RuntimeException e) {
+      throw new PegasusSparkException(
+          String.format(
+              "parser the response to tableInfo failed: %s\n%s", e.getMessage(), respString));
+    }
+    return queryResponse;
   }
 
   private static boolean queryCompactionIfCompleted(String cluster)
