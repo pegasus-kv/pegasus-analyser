@@ -6,6 +6,8 @@ import com.xiaomi.infra.pegasus.spark.common.RemoteFileSystem;
 import com.xiaomi.infra.pegasus.spark.common.RocksDBOptions;
 import com.xiaomi.infra.pegasus.spark.common.utils.AutoRetryer;
 import com.xiaomi.infra.pegasus.spark.common.utils.FlowController;
+import com.xiaomi.infra.pegasus.spark.common.utils.JsonParser;
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.util.Iterator;
@@ -18,15 +20,17 @@ import scala.Tuple2;
 class BulkLoader {
   private static final Log LOG = LogFactory.getLog(BulkLoader.class);
 
-  private static final int SINGLE_FILE_SIZE_THRESHOLD = 64 * 1024 * 1024;
-  private static final String BULK_LOAD_INFO = "bulk_load_info";
-  private static final String BULK_LOAD_METADATA = "bulk_load_metadata";
-  private static final String BULK_DATA_FILE_SUFFIX = ".sst";
+  public static final int SINGLE_FILE_SIZE_THRESHOLD = 64 * 1024 * 1024;
+  public static final String BULK_LOAD_INFO = "bulk_load_info";
+  public static final String BULK_LOAD_METADATA = "bulk_load_metadata";
+  public static final String BULK_DATA_FILE_SUFFIX = ".sst";
 
   private final AtomicLong totalSize = new AtomicLong();
   private final int partitionId;
   private int curFileIndex = 1;
   private Long curFileSize = 0L;
+
+  private BulkLoaderConfig config;
 
   private BulkLoadInfo bulkLoadInfo;
   private DataMetaInfo dataMetaInfo;
@@ -44,6 +48,8 @@ class BulkLoader {
   BulkLoader(
       BulkLoaderConfig config, Iterator<Tuple2<PegasusKey, PegasusValue>> iterator, int partitionId)
       throws PegasusSparkException {
+
+    this.config = config;
 
     String dataPathPrefix =
         config.getRemoteFileSystemURL()
@@ -91,7 +97,40 @@ class BulkLoader {
     }
   }
 
-  private void createBulkLoadInfoFile() throws PegasusSparkException {
+  public void validateGenerateFiles() throws PegasusSparkException {
+    if (!remoteFileSystem.exist(bulkLoadMetaDataPath)) {
+      throw new PegasusSparkException(
+          "validate generated files failed: can't find " + bulkLoadMetaDataPath);
+    }
+
+    try (BufferedReader bufferedReader = remoteFileSystem.getReader(bulkLoadMetaDataPath)) {
+      DataMetaInfo dataMetaInfo = JsonParser.getGson().fromJson(bufferedReader, DataMetaInfo.class);
+      for (FileInfo fileInfo : dataMetaInfo.files) {
+        String filePath = partitionPath + "/" + fileInfo.name;
+        FileStatus[] filesStatus = remoteFileSystem.getFileStatus(filePath);
+        if (filesStatus.length != 1) {
+          throw new PegasusSparkException(
+              String.format(
+                  "get file(%s) status size should be one but is %d",
+                  filePath, filesStatus.length));
+        }
+
+        String fileMD5 = remoteFileSystem.getFileMD5(filePath);
+        if (filesStatus[0].getLen() != fileInfo.size && !fileMD5.equals(fileInfo.md5)) {
+          throw new PegasusSparkException(
+              String.format(
+                  "validate file(%s) failed(actual vs expect): size(%d vs %d); md5(%s vs %s)",
+                  filePath, filesStatus[0].getLen(), fileInfo.size, fileMD5, fileInfo.md5));
+        }
+      }
+    } catch (IOException | PegasusSparkException e) {
+      throw new PegasusSparkException("validate generated files failed!");
+    }
+
+    LOG.info(String.format("completed to validate partition %d data!", partitionId));
+  }
+
+  public void createBulkLoadInfoFile() throws PegasusSparkException {
     // all partitions share one bulkLoadInfo file, so just one partition create it, otherwise the
     // filesystem may throw exception
     if (partitionId == 0) {
@@ -107,9 +146,10 @@ class BulkLoader {
   }
 
   // TODO(jiashuo): write data may should keep trying if failed, but not only finite times
-  private void createSstFile() throws PegasusSparkException {
+  public void createSstFile() throws PegasusSparkException {
     if (!dataResourceIterator.hasNext()) {
-      return;
+      throw new PegasusSparkException(
+          "can't find any data in current partition! partition = " + this.partitionId);
     }
 
     if (remoteFileSystem.exist(partitionPath)) {
@@ -156,7 +196,7 @@ class BulkLoader {
             + curFileIndex);
   }
 
-  private boolean createBulkLoadMetaDataFile() throws PegasusSparkException {
+  public boolean createBulkLoadMetaDataFile() throws PegasusSparkException {
     long start = System.currentTimeMillis();
     try {
       FileStatus[] fileStatuses = remoteFileSystem.getFileStatus(partitionPath);
@@ -176,7 +216,7 @@ class BulkLoader {
     return true;
   }
 
-  private void generateFileMetaInfo(FileStatus fileStatus) throws PegasusSparkException {
+  public void generateFileMetaInfo(FileStatus fileStatus) throws PegasusSparkException {
     String filePath = fileStatus.getPath().toString();
     if (!filePath.contains(".sst")) {
       LOG.warn(String.format("the file `%s` is not sst file, ignore it!", filePath));
@@ -197,7 +237,5 @@ class BulkLoader {
     dataMetaInfo.files.add(fileInfo);
 
     totalSize.addAndGet(fileSize);
-
-    LOG.debug(fileName + " meta info generates complete!");
   }
 }

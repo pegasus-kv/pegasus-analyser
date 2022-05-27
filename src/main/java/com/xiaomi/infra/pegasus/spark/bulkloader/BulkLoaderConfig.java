@@ -23,6 +23,7 @@ import org.rocksdb.CompressionType;
 public class BulkLoaderConfig extends CommonConfig {
   private static final Log LOG = LogFactory.getLog(BulkLoaderConfig.class);
 
+  private boolean enableValidateAfterGenerate = true;
   private AdvancedConfig advancedConfig = new AdvancedConfig();
   private CompressionType compressionType = CompressionType.ZSTD_COMPRESSION;
 
@@ -117,6 +118,11 @@ public class BulkLoaderConfig extends CommonConfig {
     return this;
   }
 
+  public BulkLoaderConfig setEnableValidateAfterGenerate(boolean enableValidateAfterGenerate) {
+    this.enableValidateAfterGenerate = enableValidateAfterGenerate;
+    return this;
+  }
+
   public DataVersion getDataVersion() {
     return tableDataVersion;
   }
@@ -135,6 +141,10 @@ public class BulkLoaderConfig extends CommonConfig {
 
   public CompressionType getCompressionType() {
     return compressionType;
+  }
+
+  public boolean isEnableValidateAfterGenerate() {
+    return enableValidateAfterGenerate;
   }
 
   /**
