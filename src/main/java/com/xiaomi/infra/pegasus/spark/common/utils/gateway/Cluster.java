@@ -584,8 +584,7 @@ public class Cluster {
     while (true) {
       Compaction.Response resp = queryTableCompaction(cluster, table);
       if (resp.err.Errno.equals("ERR_INVALID_STATE")) {
-        LOG.info(String.format("%s.%s compaction is not running", cluster, table));
-        return;
+        LOG.info(String.format("%s.%s compaction has not running", cluster, table));
       } else if (!resp.err.Errno.equals("ERR_OK")) {
         LOG.info(
             String.format("%s.%s query compaction failed, err = %s", cluster, table, resp.err));
