@@ -15,13 +15,14 @@
     <repository>
       <id>central</id>
       <name>maven-release-virtual</name>
-      <url>https://pkgs.d.xiaomi.net/artifactory/maven-release-virtual</url>
+      <url>https://repo.maven.apache.org/maven2/</url>
     </repository>
-    <snapshotRepository>
-      <id>snapshots</id>
-      <name>maven-snapshot-virtual</name>
-      <url>https://pkgs.d.xiaomi.net/artifactory/maven-snapshot-virtual</url>
-    </snapshotRepository>
+<!--&lt;!&ndash;    snapshot repository may not be supported&ndash;&gt;-->
+<!--    <snapshotRepository>-->
+<!--      <id>snapshots</id>-->
+<!--      <name>maven-snapshot-virtual</name>-->
+<!--      <url>https://oss.sonatype.org/content/repositories/snapshots/</url>-->
+<!--    </snapshotRepository>-->
   </distributionManagement>
 
   <properties>
